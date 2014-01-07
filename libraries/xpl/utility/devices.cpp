@@ -30,9 +30,10 @@ DevicesClass Devices;
 Device* DeviceParser::device() { return Devices.get(_keyDevice, _keyType); }
 
 Device* DevicesClass::get(const String& name, const String& type) {
-	for (Device* dev = this->child(); dev; dev=dev->next())
+//	for (Device* dev = this->child(); dev; dev=dev->next())
+	for (Iterator<Device> iDevice = List<Device>::first(); iDevice; ++iDevice)
 	{
-		if (dev->Is(name, type)) return dev;
+		if (iDevice->Is(name, type)) return &*iDevice;
 	}
 	return NULL;
 }

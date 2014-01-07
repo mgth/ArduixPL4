@@ -26,54 +26,90 @@
 #include <Arduino.h>
 #include "debug.h"
 
+template<class cls> class List;
+template<class cls> class Iterator;
+
+
 template<class cls>
 class Node 
 {
 private:
 	cls* _data;
+	Node<cls>* _next;
 
 public:
-	cls* _next;
-	Node() { _next = NULL; }
-	cls* next() { return (cls*)_next; }
+	Node(cls& data):_data(&data),_next(NULL) { }
+
+	friend class List<cls>;
+	friend class Iterator<cls>;
 };
 
 template<class cls>
-class Parent
+class Iterator
 {
 private:
-	cls* _child;
+	Node<cls>* _position;
+	Node<cls>* _first;
+
+public:
+	Iterator() {};
+	cls& operator*() const { return *_position->_data; }     /* use instead of * */
+	cls* operator->() const { return _position->_data; }
+	void operator++() { _position = _position->_next; }            /* use instead of ++ */
+	bool operator==(Iterator b) const { return _position = b._position; } /* use instead of == */
+
+	operator bool() const {
+		if (_position) return (_position->_next != NULL);
+		return _first == NULL;
+	}
+
+	friend class List<cls>;
+};
+
+
+template<class cls>
+class List
+{
+private:
+	Node<cls>* _first;
 public :
-	Parent() { _child = NULL; }
-
-	cls* child() { return _child; }
-	cls* add(cls* c)
+	Iterator<cls> first()
 	{
-		if (_child)
-		{
-			cls* node = _child;
-			while (node->next())
-			{
-				DBG('a');
-				node = node->next();
-			}
-			DBG('b');
-			node->_next = c;
-			DBG('c');
+		Iterator<cls> iter;
+		iter._position = iter._first = _first;
+		return iter;
+	}
 
+	List() :_first(NULL) { }
+
+	void add(cls& data)
+	{
+		Node<cls>* newNode = new Node<cls>(data);
+		newNode->_next = _first;
+		_first = newNode;
+	}
+
+	void add(cls* data)
+	{
+		if (data)
+			add(*data);
+	}
+
+	void insert(Iterator<cls> iter, cls& data)
+	{
+		if (iter._position == NULL)
+		{
+			add(data);
 		}
 		else
 		{
-			_child = c;
-			DBG('1');
+			Node<cls>* newNode = new Node<cls>(data);
+			newNode->_next = iter._position->_next;
+			iter._position->_next = newNode;
 		}
-		c->_next = NULL;
-/*
-		c->_next = _child;
-		_child = c;
-*/
-		return c;
 	}
+
+
 };
 
 #endif

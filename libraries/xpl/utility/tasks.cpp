@@ -30,17 +30,16 @@ void TasksClass::reg(Task& t) { add(&t); }
 
 void TasksClass::begin() //180
 {
-	for (Task* t = child(); t; t = t->next())
+	for (Iterator<Task> iTask = first(); iTask; ++iTask)
 	{
-		t->begin();
+		iTask->begin();
 	}
-	DBG(F("_end"));
 }
 
 void TasksClass::loop()
 {
-	for (Task* t = child(); t; t = t->next())
+	for (Iterator<Task> iTask = List<Task>::first(); iTask; ++iTask)
 	{
-		t->loop();
+		iTask->loop();
 	}
 }

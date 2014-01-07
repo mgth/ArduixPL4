@@ -35,24 +35,27 @@ public:
 };
 
 template<class cls>
-class ListenerParent : public Parent<cls>
+class ListenerParent : public List<cls>
 {
 public:
 	cls* get(const StringRom& s)
 	{
-		for (cls* c = this->child(); c; c = c->next())
+		for (Iterator<cls> c = List<cls>::first(); c; ++c)
 		{
-			if (c->key == s) return c;
+			if (c->key == s) return &*c;
 		}
-		return this->add(new cls(s));
+		cls* newObj = new cls(s);
+
+		this->add(newObj);
+
+		return newObj;
 	}
 
 	cls* get(const String& s)
 	{
-		for (cls* c = this->child(); c; c = c->next())
+		for (Iterator<cls> c = List<cls>::first(); c; ++c)
 		{
-			DBGLN_3(c->key, );
-			if (s == c->key) return c;
+			if (s == c->key) return &*c;
 		}
 		return NULL;
 	}
@@ -84,7 +87,7 @@ public:
 	void finish() { process();  delete this; }
 };
 
-class ListenerSchemaBase : public Listener, public Node<ListenerSchemaBase>
+class ListenerSchemaBase : public Listener
 {
 public:
 	ListenerSchemaBase() :Listener(S(xpl)) {}
@@ -101,7 +104,7 @@ public:
 	cls* getParser() { return new cls(); }
 };
 
-class ListenerSchClass : public Listener, public Parent<ListenerSchemaBase>, public Node<ListenerSchClass>
+class ListenerSchClass : public Listener, public List<ListenerSchemaBase>
 {
 public:
 	ListenerSchClass(StringRom sr) :Listener(sr) {}
@@ -109,17 +112,17 @@ public:
 	//template<typename StringT>
 	ListenerSchemaBase* get(const String& s)
 	{
-		for (ListenerSchemaBase* c = this->child(); c; c = c->next())
+//		for (ListenerSchemaBase* c = this->child(); c; c = c->next())
+		for (Iterator<ListenerSchemaBase> c = first(); c; ++c)
 		{
-			DBG_3(c->key);
-			if (s == c->key) return c;
+			if (s == c->key) return &*c;
 		}
 		return NULL;
 	}
 
 };
 
-class ListenerMsgType : public Listener, public ListenerParent<ListenerSchClass>, public Node<ListenerMsgType>
+class ListenerMsgType : public Listener, public ListenerParent<ListenerSchClass>
 {
 public:
 	ListenerMsgType(StringRom sr) :Listener(sr) {}

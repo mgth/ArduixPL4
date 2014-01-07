@@ -66,7 +66,7 @@ class ConfigCurrent : public Printable
 };
 
 
-class Configurator : Node<Configurator>
+class Configurator
 {
 	byte _nb;
 	StringRom _option;
@@ -82,7 +82,7 @@ class Configurator : Node<Configurator>
 	}
 };
 
-class ConfigTask : public Task, Parent<Configurator>
+class ConfigTask : public Task, List<Configurator>
 {
 
 	bool _trigList;

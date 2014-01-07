@@ -26,7 +26,7 @@
 
 #include "nodes.h"
 
-class Task : public Node<Task>
+class Task
 {
 public:
 	virtual bool begin() { return true; }
@@ -34,7 +34,7 @@ public:
 };
 
 
-class TasksClass : public Parent<Task>
+class TasksClass : public List<Task>
 {
 
 public:

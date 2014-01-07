@@ -29,7 +29,7 @@
 #include "listeners.h"
 #include "nodes.h"
 
-class Device : public Node<Device> {
+class Device  {
 protected:
 	String _name;
 
@@ -110,7 +110,7 @@ public:
 	void process() { if (device()) device()->setCurrent(_current, _data1); }
 };
 
-class DevicesClass : public Parent<Device>
+class DevicesClass : public List<Device>
 {
 	//Hooker<SensorRequest> _sensorRequest;
 
@@ -123,7 +123,7 @@ public:
 		Listeners.hook<ControlBasic>();
 	}
 
-	bool reg(Device& dev) { this->add(&dev); }
+	bool reg(Device& dev) { this->add(dev); }
 
 	bool ParseKey(const String& key, const String& value);
 
