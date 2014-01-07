@@ -123,7 +123,7 @@ public:
 		Listeners.hook<ControlBasic>();
 	}
 
-	bool reg(Device& dev) { this->addChild(&dev); }
+	bool reg(Device& dev) { this->add(&dev); }
 
 	bool ParseKey(const String& key, const String& value);
 

@@ -44,7 +44,7 @@ public:
 		{
 			if (c->key == s) return c;
 		}
-		return this->addChild(new cls(s));
+		return this->add(new cls(s));
 	}
 
 	cls* get(const String& s)
@@ -129,7 +129,7 @@ class ListenersClass : public ListenerParent<ListenerMsgType>
 {
 public:
 	template <class parser>
-	void hook() { get(parser::msgType())->get(parser::schClass())->addChild(new ListenerSchema<parser>(parser::schType())); }
+	void hook() { get(parser::msgType())->get(parser::schClass())->add(new ListenerSchema<parser>(parser::schType())); }
 //	void hook() { get(S(xpl))->get(S(xpl))->AddChild(new ListenerSchema<parser>(parser::schType)); }
 	/*
 	ListenerSchemaBase& reg(StringRom msgType, StringRom schClass, StringRom schType, ListenerSchemaBase* schema)

@@ -26,7 +26,7 @@
 
 TasksClass Tasks;
 
-void TasksClass::reg(Task& t) { addChild(&t); }
+void TasksClass::reg(Task& t) { add(&t); }
 
 void TasksClass::begin() //180
 {
