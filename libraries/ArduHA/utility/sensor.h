@@ -21,9 +21,11 @@
 	  mailto:mathieu@mgth.fr
 	  http://www.mgth.fr
 */
-#ifndef SENSORS_H
-#define SENSORS_H
-#include "devices.h"
+#ifndef SENSOR_H
+#define SENSOR_H
+#include <arduha.h>
+#include "limits.h"
+#include "linkedlist.h"
 
 class Filter:public LinkedList<Filter>
 {
@@ -66,10 +68,6 @@ public:
 		output(_value);
 	}
 };
-
-/*****************************************************************************
-xPL Sensor
-*****************************************************************************/
 
 template<typename T,int _div>
 class Calibration2ndOrder : public Filter {
@@ -168,13 +166,6 @@ public:
 	ThresholdFilter(T t, long tt = 0):_reset(true) { setThreshold(t, tt); }
 };
 
-/********************************************************************
-Sensor Generic (float)
-********************************************************************/
-#include <float.h>
-
-
-#include "utility/adapter.h"
 template<typename T>
 class OutputFilterSerial :public Filter
 {
@@ -190,71 +181,5 @@ public:
 	}
 };
 
-template<typename T,int _div>
-class xPL_Sensor : public Filter, public xPL_Device
-{
-	T _lastValue;
-public:
-	xPL_Sensor(String name, StringRom typ, StringRom units) 
-		:xPL_Device(name,typ,units) {}
-
-	void input(T value)
-	{
-		_lastValue = value;
-		Adapter::send(Message(MessageHeader(cs_trig, F("sensor"), F("basic")), "*", SensorContent(*this, F("current"))));
-	}
-
-	size_t printValueTo(Print& p, int value) const
-	{
-		int left = value / _div;
-		int right = value - left * _div;
-		size_t n = p.print(left);
-		if (right) n +=p.print('.');
-		while (right)
-		{
-			value = right * 10;
-			n += p.print(left = value / _div);
-			right = value - left * _div;
-		}
-		return n;
-	}
-
-	size_t printValueTo(Print& p, double v) const
-	{
-		return p.print(v, 2);
-	}
-
-	size_t printTo(Print& p) const {
-		return printValueTo(p,_lastValue);
-	}
-};
-
-class SensorDimmer : public xPL_Device {
-
-	float _value;
-	float _tmpValue;
-	bool _power;
-
-	virtual StringRom type() const { return (StringRom)F("dimmer"); }
-
-
-	virtual String stringValue() const;
-
-public:
-	SensorDimmer(const String& name):xPL_Device(name,F("dimmer"),F("%")),_value(0.0),_tmpValue(0.0),_power(false) { }
-
-	void setValue(float v);
-
-	float setTmpValue(float v);
-
-	float move(float v);
-
-	void validate() { setValue(_tmpValue); }
-	void cancel() { setTmpValue(_value); }
-
-	bool power() { return _power; }
-	bool power(bool p);
-	bool toggle();
-};
-
 #endif
+

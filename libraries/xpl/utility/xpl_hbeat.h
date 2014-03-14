@@ -21,19 +21,19 @@
 	  mailto:mathieu@mgth.fr
 	  http://www.mgth.fr
 */
-#ifndef HBEAT_H
-#define HBEAT_H
+#ifndef XPL_HBEAT_H
+#define XPL_HBEAT_H
 #include <xpl.h>
-#include "options.h"
+#include "utility/option.h"
 
-class NewconfOption : public OptionString
+class xPL_NewconfOption : public OptionString
 {
 public:
-	NewconfOption() : OptionString(7, cs_reconf, F("newconf"), 16, F("default")){}
+	xPL_NewconfOption() : OptionString(7, cs_reconf, F("newconf"), 16, F("default")){}
 	void parse(const String& value);
 };
 
-class Hbeat
+class xPL_Hbeat
 {
 public:
 	static OptionT<int> interval;

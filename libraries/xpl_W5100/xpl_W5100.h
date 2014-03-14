@@ -30,7 +30,7 @@
 #include "utility/tasks.h"
 #include "utility/adapter.h"
 
-class W5100Adapter : public Adapter
+class W5100Adapter : public xPL_Adapter
 {
 private:
 	EthernetUDP _udp;

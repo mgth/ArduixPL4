@@ -21,12 +21,12 @@
 	  mailto:mathieu@mgth.fr
 	  http://www.mgth.fr
 */
-#include "devices.h"
+#include "xpl_device.h"
 
-#include "adapter.h"
-#include "message.h"
+#include "xpl_adapter.h"
+#include "xpl_message.h"
 
-xPL_Device* DeviceParser::device() { return xPL_Device::get(_keyDevice, _keyType); }
+xPL_Device* xPL_DeviceParser::device() { return xPL_Device::get(_keyDevice, _keyType); }
 
 xPL_Device* xPL_Device::get(const String& name, const String& type)
 {
@@ -54,34 +54,34 @@ size_t SensorContent::printTo(Print& p) const {
 	return n;
 }
 
-class SensorRequest : public DeviceParser
+class SensorRequest : public xPL_DeviceParser
 {
 	String _request;
 public:
-	SensorRequest() :DeviceParser(MessageHeader(cs_cmnd, F("sensor"), F("request"))) {}
+	SensorRequest() :xPL_DeviceParser(xPL_MessageHeader(cs_cmnd, F("sensor"), F("request"))) {}
 
-	bool parse(const KeyValue& kv)
+	bool parse(const xPL_KeyValue& kv)
 	{
 		return kv.parse(F("request"),_request)
-			|| DeviceParser::parse(kv);
+			|| xPL_DeviceParser::parse(kv);
 	}
 	bool process()
 	{
-		return Adapter::send(Message(MessageHeader(cs_stat, F("sensor"), F("basic")), "*", SensorContent(*device(), _request)));
+		return xPL_Adapter::send(Message(xPL_MessageHeader(cs_stat, F("sensor"), F("basic")), "*", SensorContent(*device(), _request)));
 	}
 } _sensorRequest;
 
-class ControlBasic : public DeviceParser
+class ControlBasic : public xPL_DeviceParser
 {
 public:
-	ControlBasic() :DeviceParser(MessageHeader(cs_cmnd, F("control"), F("basic"))){}
+	ControlBasic() :xPL_DeviceParser(xPL_MessageHeader(cs_cmnd, F("control"), F("basic"))){}
 	String _current;
 	String _data1;
 
-	bool parse(const KeyValue& key)
+	bool parse(const xPL_KeyValue& key)
 	{
 		return key.parse(F("current"),_current)
-			|| DeviceParser::parse(key);
+			|| xPL_DeviceParser::parse(key);
 	}
 	bool process()
 	{

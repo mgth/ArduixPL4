@@ -25,9 +25,9 @@
 #ifndef ADAPTERW5100_H
 #define ADAPTERW5100_H
 #include <xpl.h>
-#include "utility/tasks.h"
-#include "utility/adapter.h"
-#include "utility/options.h"
+#include "utility/task.h"
+#include "utility/xpl_adapter.h"
+#include "utility/option.h"
 
 class OptionMacAddress : public Option
 {
@@ -86,7 +86,7 @@ public:
 	}
 };
 
-class ENC28J60Adapter : public Adapter
+class xPL_ENC28J60Adapter : public xPL_Adapter
 {
 public:
 

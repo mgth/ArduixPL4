@@ -22,15 +22,15 @@
 	  http://www.mgth.fr
 */
 
-#include "adapter.h"
-#include "listeners.h"
-#include "message.h"
+#include "xpl_adapter.h"
+#include "xpl_parser.h"
+#include "xpl_message.h"
 
 #ifndef XPL_ADAPLTER_MULTI
-Adapter* Adapter::_adapter = NULL;
+xPL_Adapter* xPL_Adapter::_adapter = NULL;
 #endif
 
-Adapter::Adapter()
+xPL_Adapter::xPL_Adapter()
 {
 #ifndef XPL_ADAPLTER_MULTI
 	_adapter = this;
@@ -38,7 +38,7 @@ Adapter::Adapter()
 	trigTask();
 };
 
-void Adapter::run() {
+void xPL_Adapter::run() {
 	if (available())
 	{
 		parse();
@@ -47,7 +47,7 @@ void Adapter::run() {
 	trigTask(_interval); // TODO: check what's should be the best value(any way to get arduino to sleep with eth card ?)
 }
 
-size_t Adapter::sendMessage(const Printable& p)
+size_t xPL_Adapter::sendMessage(const Printable& p)
 {
 	if (start())
 	{
@@ -57,20 +57,20 @@ size_t Adapter::sendMessage(const Printable& p)
 	return 0;
 }
 
-size_t Adapter::send(const Printable& p)
+size_t xPL_Adapter::send(const Printable& p)
 {
 #ifndef XPL_ADAPLTER_MULTI
 	if (_adapter) return _adapter->sendMessage(p);
 	return 0;
 #else
 	size_t n = 0;
-	foreach(Adapter, a)
+	foreach(xPL_Adapter, a)
 		n += a->sendMessage(p);
 	return n;
 #endif
 }
 
-String Adapter::readStringUntil(char terminator)
+String xPL_Adapter::readStringUntil(char terminator)
 {
 	String ret = "";
 	int c = readChar(terminator);
@@ -82,19 +82,19 @@ String Adapter::readStringUntil(char terminator)
 	return ret;
 }
 
-int Adapter::readChar(char terminator)
+int xPL_Adapter::readChar(char terminator)
 {
 	int c = read();
 	if (c == -1 || terminator == (char)c || '\n' != (char)c) return -1;
 	return c;
 }
 
-void Adapter::flushUntil(char terminator)
+void xPL_Adapter::flushUntil(char terminator)
 {
 	while (readChar(terminator) >= 0);
 }
 
-char Adapter::cmpChar(char c, char terminator)
+char xPL_Adapter::cmpChar(char c, char terminator)
 {
 	int r = readChar(terminator);
 	if (c == 0)
@@ -111,7 +111,7 @@ char Adapter::cmpChar(char c, char terminator)
 	return -1;
 }
 
-bool Adapter::cmpUntil(char terminator, StringRom cmp)
+bool xPL_Adapter::cmpUntil(char terminator, StringRom cmp)
 {
 	const char* pos = (const char*)cmp;
 	int c = cmpChar(pgm_read_byte(pos),terminator); 
@@ -123,7 +123,7 @@ bool Adapter::cmpUntil(char terminator, StringRom cmp)
 	return false;
 }
 
-bool Adapter::cmpUntil(char terminator, const String& cmp)
+bool xPL_Adapter::cmpUntil(char terminator, const String& cmp)
 {
 	int pos = 0;
 	int c = cmpChar(cmp.charAt(pos), terminator);
@@ -136,22 +136,22 @@ bool Adapter::cmpUntil(char terminator, const String& cmp)
 	return false;
 }
 
-bool Adapter::cmpUntil(char terminator, char cmp)
+bool xPL_Adapter::cmpUntil(char terminator, char cmp)
 {
 	int res = cmpChar( cmp , terminator );
 	if (res == 0) { if (cmpChar('\0', terminator) > 0) return true; }
 	return false;
 }
 
-void Adapter::parse() {
+void xPL_Adapter::parse() {
 
 	String tmp;
 
 
 	if (!cmpUntil('-', F("xpl"))) return;
-	if (!MessageParser::selectAll()) return;
+	if (!xPL_MessageParser::selectAll()) return;
 	
-	if (!MessageParser::selectAll(MSGTYPE,readStringUntil('\n'))) return;
+	if (!xPL_MessageParser::selectAll(MSGTYPE,readStringUntil('\n'))) return;
 
 	if (!cmpUntil('\n', '{')) return;
 	if (!cmpUntil('=', F("hop"))) return;
@@ -168,8 +168,8 @@ void Adapter::parse() {
 
 	if (!cmpUntil('\n', '}')) return;
 
-	if (!MessageParser::selectAll(SCHCLASS,readStringUntil('.'))) return;	
-	if (!MessageParser::selectAll(SCHTYPE,readStringUntil('\n'))) return;
+	if (!xPL_MessageParser::selectAll(SCHCLASS,readStringUntil('.'))) return;	
+	if (!xPL_MessageParser::selectAll(SCHTYPE,readStringUntil('\n'))) return;
 
 	if (!cmpUntil('\n', '{')) return;
 
@@ -177,12 +177,12 @@ void Adapter::parse() {
 	{
 		if (peek() == '}')
 		{
-			MessageParser::processSelected();
+			xPL_MessageParser::processSelected();
 			break;
 		}
-		KeyValue key;
+		xPL_KeyValue key;
 		key.key = readStringUntil('=');
 		key.value = readStringUntil('\n');
-		MessageParser::parseSelected(key);
+		xPL_MessageParser::parseSelected(key);
 	}
 }

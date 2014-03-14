@@ -21,22 +21,22 @@
 	  mailto:mathieu@mgth.fr
 	  http://www.mgth.fr
 */
-#ifndef LISTENER_H
-#define LISTENER_H
+#ifndef XPL_PARSER_H
+#define XPL_PARSER_H
 #include <xpl.h>
 
-#include "linkedlist.h"
-#include "message.h"
+#include "utility/linkedlist.h"
+#include "xpl_message.h"
 
 typedef byte nbparsers_t;
 
-class KeyValue
+class xPL_KeyValue
 {
 public:
 	String key;
 	String value;
-	KeyValue():key(""), value("") {}
-	KeyValue(String k, String v) :key(k), value(v) {}
+	xPL_KeyValue():key(""), value("") {}
+	xPL_KeyValue(String k, String v) :key(k), value(v) {}
 
 	bool is(StringRom _key,StringRom _value) const { return (key == _key && value == _value); }
 
@@ -45,23 +45,22 @@ public:
 		if (key == _key) { store = value; return true; }
 		return false;
 	}
-
 };
 
-class MessageParser : public AutoList<MessageParser>
+class xPL_MessageParser : public AutoList<xPL_MessageParser>
 {
 	bool _selected;
 private:
-	MessageHeader _header;
+	xPL_MessageHeader _header;
 
 protected:
 
 public:
-	MessageHeader& header() { return _header; }
-	MessageParser(MessageHeader header) :_header(header) {};
+	xPL_MessageHeader& header() { return _header; }
+	xPL_MessageParser(xPL_MessageHeader header) :_header(header) {};
 
-	virtual bool parse(const KeyValue& key) = 0;
-	static nbparsers_t parseSelected(const KeyValue& kv);
+	virtual bool parse(const xPL_KeyValue& key) = 0;
+	static nbparsers_t parseSelected(const xPL_KeyValue& kv);
 
 	virtual bool process() { return true; }
 	static nbparsers_t processSelected();

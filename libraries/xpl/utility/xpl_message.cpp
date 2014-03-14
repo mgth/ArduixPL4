@@ -22,11 +22,9 @@
 	  http://www.mgth.fr
 */
 
-#include "message.h"
-#include "options.h"
-#include "hbeat.h"
-#include <avr/pgmspace.h>
-#include <avr/eeprom.h>
+#include "xpl_message.h"
+#include "option.h"
+#include "xpl_hbeat.h"
 
 size_t printCloseTo(Print& p)
 {
@@ -46,7 +44,7 @@ public:
 	{
 		return
 			printKeyTo(p, F("hop"), 1) +
-			printlnTo(p, F("source"), '=') + printlnTo(p, xPL::vendor(), '-') + printlnTo(p, xPL::device(), '.') + printlnTo(p, Hbeat::newconf) +
+			printlnTo(p, F("source"), '=') + printlnTo(p, xPL::vendor(), '-') + printlnTo(p, xPL::device(), '.') + printlnTo(p, xPL_Hbeat::newconf) +
 			printKeyTo(p, F("target"), _target);
 	}
 };

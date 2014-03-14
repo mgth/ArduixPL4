@@ -1,33 +1,8 @@
-/*
-  ArduixPL - xPL library for Arduino(tm)
-  Copyright (c) 2012/2014 Mathieu GRENET.  All right reserved.
-
-  This file is part of ArduixPL.
-
-    ArduixPL is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    ArduixPL is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with ArduixPL.  If not, see <http://www.gnu.org/licenses/>.
-
-	  Modified 2014-1-7 by Mathieu GRENET 
-	  mailto:mathieu@mgth.fr
-	  http://www.mgth.fr
-*/
-
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include <xpl.h>
 #include "linkedlist.h"
-#include "listeners.h"
+#include "romstrings.h"
 class Option;
 
 class EepromCell
@@ -52,16 +27,16 @@ class EepromCell
 class Option : public AutoList<Option>, public Printable
 {
 	byte _nb;
-	ConstString_t _option;
+	byte _optionType;
 	StringRom _name;
 	uint8_t* _addr;
 public:
 	byte nb() const { return _nb; }
-	StringRom option() const { return ConstString(_option); }
+	byte optionType() const { return _optionType; }
 	StringRom name() const { return _name; }
 
-	Option(int addr, ConstString_t option, StringRom name)
-		:_addr((uint8_t*)addr), _option(option), _name(name){}
+	Option(int addr, byte optionType, StringRom name)
+		:_addr((uint8_t*)addr), _optionType(optionType), _name(name){}
 		
 	static bool configured;
 	uint8_t*  addr(byte pos) const { return _addr + pos; }
@@ -122,11 +97,13 @@ public:
 
 	static bool corrupted()
 	{
+#ifdef DEBUG 
 		DBG(F("Eeprom corrupted... reboot"));
-		//delay(1000);
-		//WDTCSR = (1 << WDE) | (1 << WDCE);
-		//WDTCSR = (1 << WDE);
 		for (;;);
+#else
+		WDTCSR = (1 << WDE) | (1 << WDCE);
+		WDTCSR = (1 << WDE);
+#endif
 	}
 };
 
@@ -135,8 +112,8 @@ class OptionT : public Option
 {
 
 public:
-	OptionT(int addr, ConstString_t option, StringRom name, _type def)
-		:Option(addr, option, name) {
+	OptionT(int addr, byte optionType, StringRom name, _type def)
+		:Option(addr, optionType, name) {
 		if (!checkCrc()) storeObj((char*)&def);
 	}
 
@@ -170,8 +147,8 @@ class OptionString : public Option
 {
 	byte _size;
 public:
-	OptionString(int addr, ConstString_t option, StringRom name,byte size, StringRom def)
-		:_size(size),Option(addr, option, name) {
+	OptionString(int addr, byte optionType, StringRom name, byte size, StringRom def)
+		:_size(size),Option(addr, optionType, name) {
 		if (!checkCrc()) storeObj(def);
 	}
 

@@ -24,7 +24,10 @@
 
 #ifndef DEBUG_H
 #define DEBUG_H
-#include <xpl.h> // TODO : make it independante from xpl
+
+#include <ArduHA.h>
+#include "romstrings.h"
+
 
 #ifdef DEBUG_LCD
 #include <Wire.h> 

@@ -24,38 +24,8 @@
 #ifndef XPL_H
 #define XPL_H
 #if defined(ARDUINO) && ARDUINO >= 100#include "Arduino.h"#else#include "WProgram.h"#endif
-
-#include "setup.h"
-
-#define GCC_VERSION (__GNUC__ * 10000 \
-	+ __GNUC_MINOR__ * 100 \
-	+ __GNUC_PATCHLEVEL__)
-
-
-#if 1
-//typedef const __FlashStringHelper* StringRom;
-#include <avr/pgmspace.h>
-#include "WString.h"
-//typedef const __FlashStringHelper* StringRom;
-#else
-#include "WString.h"
-typedef const String StringRom;
-#ifdef F
-#undef F
-#define F(string_literal) string_literal
-#endif
-#endif
-
-typedef  unsigned long time_t;
-
-#if !defined(RAMSIZE)
-#if defined(RAMSTART)
-#define RAMSIZE RAMEND-RAMSTART
-#else
-#define RAMSIZE RAMEND-0x0FF
-#endif
-#endif
-
+#include <ArduHA.h>
+#include "xpl_setup.h"
 
 #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1284P__)
 
@@ -86,12 +56,39 @@ typedef  unsigned long time_t;
 
 #include "utility/debug.h"
 
+typedef enum ConstString_t
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+: unsigned char
+#endif
+{
+	cs_stat,
+	cs_trig,
+	cs_cmnd,
+	cs_reconf,
+	cs_option,
+	cs_device,
+	cs_type
+};
+
 
 class xPL
 {
 public:
 	static StringRom vendor() { return (StringRom)F("arduixpl"); }
 	static StringRom device() { return (StringRom)F("device"); }
+	
+	static StringRom ConstString(ConstString_t cs)
+	{
+		switch (cs) {
+		case cs_cmnd: return F("cmnd");
+		case cs_stat: return F("stat");
+		case cs_trig: return F("trig");
+		case cs_reconf: return F("reconf");
+		case cs_option: return F("option");
+		case cs_device: return F("device");
+		case cs_type: return F("type");
+		}
+	}
 
 };
 

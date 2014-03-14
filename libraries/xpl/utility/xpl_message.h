@@ -22,8 +22,8 @@
 	  http://www.mgth.fr
 */
 
-#ifndef MESSAGE_H
-#define MESSAGE_H
+#ifndef XPL_MESSAGE_H
+#define XPL_MESSAGE_H
 
 #include <Printable.h>
 #include <xpl.h>
@@ -52,16 +52,16 @@ size_t printKeyTo(Print& p, const Tkey& key, const Tvalue& value, char separator
 		printlnTo(p, value);
 }
 
-class MessageHeader
+class xPL_MessageHeader
 {
 	ConstString_t _msgType;
 	StringRom _schClass;
 	StringRom _schType;
 public:
-	MessageHeader(ConstString_t msgType, StringRom schClass, StringRom schType)
+	xPL_MessageHeader(ConstString_t msgType, StringRom schClass, StringRom schType)
 		:_msgType(msgType), _schClass(schClass), _schType(schType) {}
 
-	StringRom msgType() const { return ConstString(_msgType); }
+	StringRom msgType() const { return xPL::ConstString(_msgType); }
 	StringRom schClass() const { return _schClass; }
 	StringRom schType() const { return _schType; }
 
@@ -79,14 +79,14 @@ public:
 class Message : public Printable
 {
 protected:
-	const MessageHeader _header;
+	const xPL_MessageHeader _header;
 	const String _target;
 	const Printable& _content;
 
 public:
 
 	Message(
-		const MessageHeader& header,
+		const xPL_MessageHeader& header,
 		const String& target,
 		const Printable& content
 		) :_header(header),_target(target), _content(content) {}

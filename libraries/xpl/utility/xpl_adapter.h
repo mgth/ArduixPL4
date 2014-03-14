@@ -26,18 +26,19 @@
 #define ADAPTER_H
 #include <Printable.h>
 
+#include <ArduHA.h>
 #include <xpl.h>
-#include "tasks.h"
+#include "utility/task.h"
 
-class Adapter : public Task, public Stream
+class xPL_Adapter : public Task, public Stream
 
 #ifdef XPL_ADAPLTER_MULTI
-	, public AutoList<Adapter>
+	, public AutoList<xPL_Adapter>
 #endif
 
 {
 #ifndef XPL_ADAPLTER_MULTI
-	static Adapter* _adapter;
+	static xPL_Adapter* _adapter;
 #endif
 	time_t _interval;
 
@@ -49,7 +50,7 @@ class Adapter : public Task, public Stream
 	virtual bool send() = 0;
 
 public:
-	Adapter();
+	xPL_Adapter();
 
 	//send message
 	size_t sendMessage(const Printable& p);

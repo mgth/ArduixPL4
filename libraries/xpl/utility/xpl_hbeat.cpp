@@ -22,11 +22,11 @@
 	  http://www.mgth.fr
 */
 
-#include "hbeat.h"
-#include "listeners.h"
-#include "adapter.h"
-#include "tasks.h"
-#include "message.h"
+#include "xpl_hbeat.h"
+#include "xpl_parser.h"
+#include "xpl_adapter.h"
+#include "task.h"
+#include "xpl_message.h"
 
 
 unsigned long _lastHbeatTime;
@@ -37,41 +37,41 @@ StringRom s_newconf() { return F("newconf"); }
 StringRom s_default() { return F("default"); }
 
 
-OptionT<int> Hbeat::interval(24, cs_option, s_interval(), XPL_CONFIG_INTERVAL);
-OptionString Hbeat::newconf(7, cs_reconf, s_newconf(), 16, s_default());
+OptionT<int> xPL_Hbeat::interval(24, cs_option, s_interval(), XPL_CONFIG_INTERVAL);
+OptionString xPL_Hbeat::newconf(7, cs_reconf, s_newconf(), 16, s_default());
 
 /*
-Hbeat message content
+xPL_Hbeat message content
 */
-class HbeatContent : public Printable
+class xPL_HbeatContent : public Printable
 {
 	virtual size_t printTo(Print& p) const
 	{
-		printKeyTo(p, F("interval"), Hbeat::interval);
+		printKeyTo(p, F("interval"), xPL_Hbeat::interval);
 	}
 };
 
 
-// TASK : HbeatTask : send hbeat.basic or hbeat.config at every _interval.
+// TASK : xPL_HbeatTask : send hbeat.basic or hbeat.config at every _interval.
 
-class HbeatTask: public Task
+class xPL_HbeatTask: public Task
 {
 public:
 	//first hbeat occure at boot
-	HbeatTask() { trigTask(); }
+	xPL_HbeatTask() { trigTask(); }
 	virtual void run()
 	{
-		Adapter::send(
+		xPL_Adapter::send(
 			Message(
-				MessageHeader(
+				xPL_MessageHeader(
 						cs_stat,
 						Option::configured?F("hbeat"):F("config"),
 						F("basic")
 					)
 				, "*"
-				, HbeatContent()));
+				, xPL_HbeatContent()));
 
-		trigTask(Hbeat::interval*60000);
+		trigTask(xPL_Hbeat::interval*60000);
 	}
 } _hbeatTask;
 
@@ -80,24 +80,24 @@ class NullPrintable : public Printable
 	size_t printTo(Print& p) const { return 0; }
 };
 
-// TASK : NewConf
+// TASK : xPL_NewConf
 
-class NewConf : public Task
+class xPL_NewConf : public Task
 {
 	String _newname;
 public:
-	NewConf(const String& newname) :_newname(newname) {};
+	xPL_NewConf(const String& newname) :_newname(newname) {};
 
 	void run() {
-		MessageHeader h(
+		xPL_MessageHeader h(
 			cs_stat,
 			Option::configured ? F("hbeat") : F("config"),
 			F("end")
 		);
 
-		if ( Adapter::send(Message(h, "*", NullPrintable())) )
+		if ( xPL_Adapter::send(Message(h, "*", NullPrintable())) )
 		{
-			Hbeat::newconf = _newname;
+			xPL_Hbeat::newconf = _newname;
 			Option::configured = true;
 			_hbeatTask.trigTask();
 			delete(this);
@@ -105,18 +105,18 @@ public:
 	}
 };
 
-void NewconfOption::parse(const String& value) {
-	(new NewConf(value))->trigTask();
+void xPL_NewconfOption::parse(const String& value) {
+	(new xPL_NewConf(value))->trigTask();
 };
 
 
 // PARSER : xpl-cmnd - hbeat.request
 
-class HbeatRequestParser : public MessageParser
+class xPL_HbeatRequestParser : public xPL_MessageParser
 {
 public:
-	HbeatRequestParser() :MessageParser(MessageHeader(cs_cmnd, F("hbeat"), F("request"))) {}
-	bool parse(const KeyValue& kv)
+	xPL_HbeatRequestParser() :xPL_MessageParser(xPL_MessageHeader(cs_cmnd, F("hbeat"), F("request"))) {}
+	bool parse(const xPL_KeyValue& kv)
 	{
 		if (kv.is(F("command"),F("request")))
 		{

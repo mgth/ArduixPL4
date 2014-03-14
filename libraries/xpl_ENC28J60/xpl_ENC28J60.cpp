@@ -587,7 +587,7 @@ void initialize() {
 
 }
 
-void ENC28J60Adapter::begin()
+void xPL_ENC28J60Adapter::begin()
 {
 	static bool init = false;
 
@@ -600,7 +600,7 @@ void ENC28J60Adapter::begin()
 
 }
 
-bool ENC28J60Adapter::start() {
+bool xPL_ENC28J60Adapter::start() {
 	begin();
 
 	writeReg(ETXND, TXSTOP_INIT);
@@ -610,7 +610,7 @@ bool ENC28J60Adapter::start() {
 	return true;
 }
 
-bool ENC28J60Adapter::send() {
+bool xPL_ENC28J60Adapter::send() {
 	
 	word len = _writePos;
 	long udpSum = _checksum;
@@ -635,7 +635,7 @@ bool ENC28J60Adapter::send() {
 }
 
 
-size_t ENC28J60Adapter::write(uint8_t val) {
+size_t xPL_ENC28J60Adapter::write(uint8_t val) {
 	printByte(val);
 	return 1;
 }
@@ -681,7 +681,7 @@ word packetReceive() {
 	return len;
 }
 
-int ENC28J60Adapter::available()
+int xPL_ENC28J60Adapter::available()
 {
 	if (_available < 0)
 	{
@@ -706,7 +706,7 @@ int ENC28J60Adapter::available()
 	return _available;
 }
 
-int ENC28J60Adapter::read()
+int xPL_ENC28J60Adapter::read()
 {
 	if (available())
 	{
@@ -718,7 +718,7 @@ int ENC28J60Adapter::read()
 	return -1;
 }
 
-int ENC28J60Adapter::peek() 
+int xPL_ENC28J60Adapter::peek() 
 {
 	if (available())
 	{
@@ -733,7 +733,7 @@ int ENC28J60Adapter::peek()
 	return -1;
 }
 
-void ENC28J60Adapter::flush()
+void xPL_ENC28J60Adapter::flush()
 {
 	packetRelease();
 }

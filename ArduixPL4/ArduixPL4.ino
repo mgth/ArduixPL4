@@ -1,17 +1,20 @@
-#include <xpl.h>
+#include <ArduHA.h>
+#include "ha_DS18x20.h"
 
+#include <xpl.h>
 #include <xpl_ENC28J60.h>
-#include "DallasTemperature.h"
-#include "utility/hbeat.h"
-ENC28J60Adapter adapter;
-DallasTemperatureGlobalTask tempTask(60000);
+#include "utility/xpl_hbeat.h"
+#include "utility/xpl_sensor.h"
+
+xPL_ENC28J60Adapter adapter;
+HA_DS18x20_GlobalTask tempTask(60000);
 
 _SETUP()
 {
-	DallasTemperatureMulti::discover(12);
+	HA_DS18x20_Multi::discover(12);
 
 	int i = 0;
-	foreach(DallasTemperatureMulti, s)
+	foreach(HA_DS18x20_Multi, s)
 	{
 		String name = "T" + String(i++);
 		//s->addFilter(new KalmanFilter<int,100>(1));
@@ -25,17 +28,17 @@ _SETUP()
 
 	DBG_MEM(F("loop"));
 	//int a;
-	//a = MessageParser::selectAll();
+	//a = xPL_MessageParser::selectAll();
 	//DBGLN("all:",a);
-	//a = MessageParser::selectAll(MSGTYPE, "cmnd");
+	//a = xPL_MessageParser::selectAll(MSGTYPE, "cmnd");
 	//DBGLN("cmnd:",a);
-	//a = MessageParser::selectAll(SCHCLASS, "config");
+	//a = xPL_MessageParser::selectAll(SCHCLASS, "config");
 	//DBGLN("config:",a);
-	//a = MessageParser::selectAll(SCHTYPE, "list");
+	//a = xPL_MessageParser::selectAll(SCHTYPE, "list");
 	//DBGLN("current:",a);
-	//a =MessageParser::parseSelected(KeyValue("command", "request"));
+	//a =xPL_MessageParser::parseSelected(xPL_KeyValue("command", "request"));
 	//DBGLN("parse:",a);
-	//a =	MessageParser::processSelected();
+	//a =	xPL_MessageParser::processSelected();
 	//DBGLN("process:",a);
 	DBGLN("tasks:", Task::count());
 }

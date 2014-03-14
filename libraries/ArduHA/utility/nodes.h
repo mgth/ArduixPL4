@@ -24,7 +24,6 @@
 #ifndef NODE_H
 #define NODE_H
 #include <Arduino.h>
-#include "debug.h"
 
 #define foreach(typ,iter,list) for(Iterator<typ> iter=(list).first();iter;++iter)
 
@@ -112,8 +111,6 @@ public :
 			iter._position->_next = newNode;
 		}
 	}
-
-
 };
 
 #endif

@@ -21,13 +21,13 @@
 	  mailto:mathieu@mgth.fr
 	  http://www.mgth.fr
 */
-#ifndef DEVICES_H
-#define DEVICES_H
+#ifndef XPL_DEVICE_H
+#define XPL_DEVICE_H
 #include <Print.h>
 #include <xpl.h>
 
-#include "listeners.h"
-#include "linkedlist.h"
+#include "utility/linkedlist.h"
+#include "xpl_parser.h"
 
 class xPL_Device : public AutoList<xPL_Device>, public Printable {
 protected:
@@ -57,14 +57,14 @@ public:
 //	size_t printTo(Print& p) const { p.print(_lastValue); }
 };
 
-class DeviceParser : public MessageParser
+class xPL_DeviceParser : public xPL_MessageParser
 {
 	String _keyDevice;
 	String _keyType;
 public:
-	DeviceParser(MessageHeader header)
-		:MessageParser(header){}
-	bool parse(const KeyValue& key)
+	xPL_DeviceParser(xPL_MessageHeader header)
+		:xPL_MessageParser(header){}
+	bool parse(const xPL_KeyValue& key)
 	{
 		return key.parse(F("device"),_keyDevice)
 			|| key.parse(F("type"),_keyType);
