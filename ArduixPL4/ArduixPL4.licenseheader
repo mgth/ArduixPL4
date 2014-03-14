@@ -1,9 +1,9 @@
 extensions: .cpp .h .ino
 /*
-  ArduixPL - xPL library for Arduino(tm)
-  Copyright (c) 2012/2014 Mathieu GRENET.  All right reserved.
+  ArduHA - ArduixPL - xPL library for Arduino(tm)
+  Copyright (c) 2012/%CurrentYear% Mathieu GRENET.  All right reserved.
 
-  This file is part of ArduixPL.
+  This file is part of ArduHA / ArduixPL.
 
     ArduixPL is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

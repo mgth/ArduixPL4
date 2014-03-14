@@ -1,9 +1,38 @@
-#ifdef XPL_CONFIGURE
+/*
+  ArduHA - ArduixPL - xPL library for Arduino(tm)
+  Copyright (c) 2012/2014 Mathieu GRENET.  All right reserved.
 
-class ConfigList : public Task, public Printable
+  This file is part of ArduHA / ArduixPL.
+
+    ArduixPL is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    ArduixPL is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with ArduixPL.  If not, see <http://www.gnu.org/licenses/>.
+
+	  Modified 2014-3-14 by Mathieu GRENET 
+	  mailto:mathieu@mgth.fr
+	  http://www.mgth.fr
+*/
+#include <xpl.h>
+#ifdef XPL_CONFIGURE
+#include "task.h"
+#include "option.h"
+#include "xpl_adapter.h"
+#include "xpl_message.h"
+#include "xpl_parser.h"
+
+class xPL_ConfigList : public Task, public Printable
 {
 public:
-	ConfigList() :Task(0){}
+	xPL_ConfigList() :Task(0){}
 
 	size_t printTo(Print& p) const {
 		size_t n = 0;
@@ -27,10 +56,10 @@ public:
 	}
 };
 
-class ConfigCurrent : public Task, public Printable
+class xPL_ConfigCurrent : public Task, public Printable
 {
 public:
-	ConfigCurrent() :Task(0){}
+	xPL_ConfigCurrent() :Task(0){}
 	size_t printTo(Print& p) const {
 		size_t n = 0;
 		foreach(Option, opt)
@@ -48,40 +77,40 @@ public:
 
 };
 
-class ConfigListParser : public xPL_MessageParser
+class xPL_ConfigListParser : public xPL_MessageParser
 {
 public:
-	ConfigListParser() : xPL_MessageParser(xPL_MessageHeader(cs_cmnd, F("config"), F("list"))){}
+	xPL_ConfigListParser() : xPL_MessageParser(xPL_MessageHeader(cs_cmnd, F("config"), F("list"))){}
 	bool parse(const xPL_KeyValue& key)
 	{
 		if (key.is(F("command"), F("request")))
 		{
-			new ConfigList();
+			new xPL_ConfigList();
 			return true;
 		}
 		return false;
 	}
 } _configList;
 
-class ConfigCurrentParser : public xPL_MessageParser
+class xPL_ConfigCurrentParser : public xPL_MessageParser
 {
 public:
-	ConfigCurrentParser() :xPL_MessageParser(xPL_MessageHeader(cs_cmnd, F("config"), F("current"))) {}
+	xPL_ConfigCurrentParser() :xPL_MessageParser(xPL_MessageHeader(cs_cmnd, F("config"), F("current"))) {}
 	bool parse(const xPL_KeyValue& kv)
 	{
 		if (kv.is(F("command"), F("request")))
 		{
-			new ConfigCurrent();
+			new xPL_ConfigCurrent();
 			return true;
 		}
 		return false;
 	}
 } _configCurrent;
 
-class ConfigResponseParser : public xPL_MessageParser
+class xPL_ConfigResponseParser : public xPL_MessageParser
 {
 public:
-	ConfigResponseParser() :xPL_MessageParser(xPL_MessageHeader(cs_cmnd, F("config"), F("response"))) {}
+	xPL_ConfigResponseParser() :xPL_MessageParser(xPL_MessageHeader(cs_cmnd, F("config"), F("response"))) {}
 	bool parse(const xPL_KeyValue& kv)
 	{
 		bool result = false;
