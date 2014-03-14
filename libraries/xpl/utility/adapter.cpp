@@ -24,109 +24,165 @@
 
 #include "adapter.h"
 #include "listeners.h"
-#include <avr/crc16.h>
-#include <avr/eeprom.h>
+#include "message.h"
 
-void Adapter::setMac(uint8_t* mac)
+#ifndef XPL_ADAPLTER_MULTI
+Adapter* Adapter::_adapter = NULL;
+#endif
+
+Adapter::Adapter()
 {
-	uint8_t crc = 0;
-	for (int i = 0; i < 6; i++)
-	{
-		mac[i] = eeprom_read_byte((uint8_t*)i);
-		crc = _crc_ibutton_update(crc, mac[i]);
-	}
+#ifndef XPL_ADAPLTER_MULTI
+	_adapter = this;
+#endif
+	trigTask();
+};
 
-
-	if (crc != eeprom_read_byte((uint8_t*)6))
-	{
-		randomSeed(analogRead(0));
-		crc = 0;
-		for (byte i = 0; i < 6; i++)
-		{
-			mac[i] = random(256);
-			if (i == 0) mac[0] = (random(256) & B11111110) | B00000010;
-			crc = _crc_ibutton_update(crc, mac[i]);
-			eeprom_write_byte((uint8_t*)i, mac[i]);
-		}
-		eeprom_write_byte((uint8_t*)6, crc);
-	}
-}
-
-void Adapter::loop() {
-	String _source;
-	String _target;
+void Adapter::run() {
 	if (available())
 	{
-		DBGLN_3(F("\nmessage"), );
-
-		if (cmpUntil('-', S(xpl)))
-		{
-			DBG_3('0');
-			ListenerMsgType* msgType = Listeners.get(readStringUntil('\n'));
-			if (msgType)
-			{
-				DBG_3('1');
-				if (cmpUntil('\n', S(_open)))
-				{
-					DBG_3('2');
-					if (cmpUntil('=', S(hop)))
-					{
-						DBG_3('3');
-						readStringUntil('\n');
-						if (cmpUntil('=', S(source)))
-						{
-							DBG_3('4');
-							_source = readStringUntil('\n');
-							if (cmpUntil('=', S(target)))
-							{
-								DBG_3('5');
-								_target = readStringUntil('\n');
-								if (cmpUntil('\n', S(_close)))
-								{
-									DBG_3('6');
-									String test = readStringUntil('.');
-									//DBGLN_3(S(test),test);
-									ListenerSchClass* schClass = msgType->get(test);
-									if (schClass)
-									{
-										DBG_3('7');
-										ListenerSchemaBase* schema = schClass->get(readStringUntil('\n'));
-										if (schema)
-										{
-											DBG_3('8');
-											if (cmpUntil('\n', S(_open)))
-											{
-												DBG_3('9');
-
-												MessageParser* parser = schema->getParser();
-												if (parser)
-												{
-													while (available())
-													{
-														DBG_3('a');
-														if (peek() == '}') break;
-														DBG_3('b'); 
-														parser->setKey(readStringUntil('='));
-														DBG_3('c');
-														parser->setValue(readStringUntil('\n'));
-														DBG_3('d');
-														parser->parse();
-													}
-													parser->finish();
-													DBG_3('e');
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
-
+		parse();
 		flush();
+	}
+	trigTask(_interval); // TODO: check what's should be the best value(any way to get arduino to sleep with eth card ?)
+}
+
+size_t Adapter::sendMessage(const Printable& p)
+{
+	if (start())
+	{
+		size_t n = print(p);
+		if (send()) return n;
+	}
+	return 0;
+}
+
+size_t Adapter::send(const Printable& p)
+{
+#ifndef XPL_ADAPLTER_MULTI
+	if (_adapter) return _adapter->sendMessage(p);
+	return 0;
+#else
+	size_t n = 0;
+	foreach(Adapter, a)
+		n += a->sendMessage(p);
+	return n;
+#endif
+}
+
+String Adapter::readStringUntil(char terminator)
+{
+	String ret = "";
+	int c = readChar(terminator);
+	while ( c != -1 )
+	{
+		ret += (char)c;
+		c = readChar(terminator);
+	}
+	return ret;
+}
+
+int Adapter::readChar(char terminator)
+{
+	int c = read();
+	if (c == -1 || terminator == (char)c || '\n' != (char)c) return -1;
+	return c;
+}
+
+void Adapter::flushUntil(char terminator)
+{
+	while (readChar(terminator) >= 0);
+}
+
+char Adapter::cmpChar(char c, char terminator)
+{
+	int r = readChar(terminator);
+	if (c == 0)
+	{
+		if (r == -1) return 0; // strings are eguals
+	}
+	else
+	{
+		if (r == -1) return -1; // strings are different
+		if (r == c) return 1; // ok until there
+	}
+
+	flushUntil(terminator);
+	return -1;
+}
+
+bool Adapter::cmpUntil(char terminator, StringRom cmp)
+{
+	const char* pos = (const char*)cmp;
+	int c = cmpChar(pgm_read_byte(pos),terminator); 
+	while (c == 0)
+	{
+		c = cmpChar(pgm_read_byte(pos), terminator);  pos++;
+	}
+	if (c>0) return true;
+	return false;
+}
+
+bool Adapter::cmpUntil(char terminator, const String& cmp)
+{
+	int pos = 0;
+	int c = cmpChar(cmp.charAt(pos), terminator);
+	while (c == 0)
+	{
+		c = cmpChar(cmp.charAt(pos), terminator);
+		pos++;
+	}
+	if (c>0) return true;
+	return false;
+}
+
+bool Adapter::cmpUntil(char terminator, char cmp)
+{
+	int res = cmpChar( cmp , terminator );
+	if (res == 0) { if (cmpChar('\0', terminator) > 0) return true; }
+	return false;
+}
+
+void Adapter::parse() {
+
+	String tmp;
+
+
+	if (!cmpUntil('-', F("xpl"))) return;
+	if (!MessageParser::selectAll()) return;
+	
+	if (!MessageParser::selectAll(MSGTYPE,readStringUntil('\n'))) return;
+
+	if (!cmpUntil('\n', '{')) return;
+	if (!cmpUntil('=', F("hop"))) return;
+
+	readStringUntil('\n');
+
+	if (!cmpUntil('=', F("source"))) return;
+	tmp = readStringUntil('\n');
+
+	if (!cmpUntil('=', F("target"))) return;
+	tmp = readStringUntil('\n');
+
+//	if (tmp != "*" && tmp != Message::source()) return;
+
+	if (!cmpUntil('\n', '}')) return;
+
+	if (!MessageParser::selectAll(SCHCLASS,readStringUntil('.'))) return;	
+	if (!MessageParser::selectAll(SCHTYPE,readStringUntil('\n'))) return;
+
+	if (!cmpUntil('\n', '{')) return;
+
+	while (available())
+	{
+		if (peek() == '}')
+		{
+			MessageParser::processSelected();
+			break;
+		}
+		KeyValue key;
+		key.key = readStringUntil('=');
+		key.value = readStringUntil('\n');
+		MessageParser::parseSelected(key);
 	}
 }

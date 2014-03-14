@@ -23,32 +23,38 @@
 */
 #ifndef DEVICES_H
 #define DEVICES_H
-#include "defines.h"
 #include <Print.h>
+#include <xpl.h>
 
 #include "listeners.h"
-#include "nodes.h"
+#include "linkedlist.h"
 
-class Device  {
+class xPL_Device : public AutoList<xPL_Device>, public Printable {
 protected:
 	String _name;
-
+	StringRom _type;
+	StringRom _units;
 public:
-
+	xPL_Device(const String& name, StringRom typ, StringRom units) 
+		:_name(name),_type(typ),_units(units) {}
 	String name() const { return _name; }
-	void setName(const String& name) { _name = name; }
-	virtual StringRom type() const { return S(basic); }
+	StringRom type() const { return _type; }
+	StringRom units() const { return _units; }
 
-	bool Is(const String& sName, const String& sType) {
-		if (sName != _name) return false;
-		if (sType != type()) return false;
+	void setName(const String& name) { _name = name; }
+
+	bool is(const String& name, const String& typ) {
+		if (name != _name) return false;
+		if (typ !="" && typ != _type) return false;
 		return true;
 	}
 
-	virtual void setCurrent(const String& current, const String& data1) = 0;
-	virtual String current() const = 0;
+	virtual void setValue(const String& current, const String& data1) {};
+	virtual void setValue(float value) {};
 
-	virtual size_t PrintCurrent(Print& p) { return 0; }
+	static xPL_Device* get(const String& name, const String& type);
+
+//	size_t printTo(Print& p) const { p.print(_lastValue); }
 };
 
 class DeviceParser : public MessageParser
@@ -56,79 +62,31 @@ class DeviceParser : public MessageParser
 	String _keyDevice;
 	String _keyType;
 public:
-
-	bool parse()
+	DeviceParser(MessageHeader header)
+		:MessageParser(header){}
+	bool parse(const KeyValue& key)
 	{
-		return parseKey(S(device), _keyDevice)
-			|| parseKey(S(type), _keyType);
+		return key.parse(F("device"),_keyDevice)
+			|| key.parse(F("type"),_keyType);
 	}
-public:
-	Device* device();
+
+	xPL_Device* device();
 };
 
 
 class SensorContent : public Printable
 {
 	const String& _request;
-	const Device& _device;
-
+	const xPL_Device& _device;
 public:
-	SensorContent(const Device &device,const String& request) :_request(request), _device(device)	{}
+	SensorContent(const xPL_Device &device,const String& request) :_request(request), _device(device)	{}
 
 	size_t printTo(Print& p) const;
 };
 
-class SensorRequest : public DeviceParser
-{
-public:
-	static StringRom schClass() { return S(sensor); }
-	static StringRom schType() { return S(request); }
-	String _request;
-
-	bool parse()
-	{
-		return parseKey(S(request), _request)
-		|| DeviceParser::parse();
-	}
-
-	void process();
-};
-
-class ControlBasic : public DeviceParser
-{
-public:
-	static StringRom schClass() { return S(control); }
-	static StringRom schType() { return S(basic); }
-	String _current;
-	String _data1;
-
-	bool parse()
-	{
-		return parseKey(S(current), _current)
-			|| DeviceParser::parse();
-	}
-	void process() { if (device()) device()->setCurrent(_current, _data1); }
-};
-
-class DevicesClass : public List<Device>
-{
-	//Hooker<SensorRequest> _sensorRequest;
-
-public:
-	Device* get(const String& name, const String& type);
 
 
-	void begin() {
-		Listeners.hook<SensorRequest>();
-		Listeners.hook<ControlBasic>();
-	}
 
-	bool reg(Device& dev) { this->add(dev); }
-
-	bool ParseKey(const String& key, const String& value);
-
-};
-extern DevicesClass Devices;
 
 
 

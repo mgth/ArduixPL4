@@ -25,38 +25,73 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H
 
-#include <Arduino.h>
-#include "defines.h"
+#include <Printable.h>
+#include <xpl.h>
+
+enum msgPart
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+	: byte
+#endif
+{ MSGTYPE, SCHCLASS, SCHTYPE };
+
+template<typename typ>
+size_t printlnTo(Print& p,const typ& var, char ln = '\n')
+{
+	int n = p.print(var) + p.print(ln);
+#ifdef DEBUG
+	delay(1*n); //TODO : on nano, writing to fast crashes, not tested on other boards.
+#endif
+	return n;
+}
+
+template<typename Tkey, typename Tvalue>
+size_t printKeyTo(Print& p, const Tkey& key, const Tvalue& value, char separator = '=')
+{
+	return
+		printlnTo(p, key,separator) +
+		printlnTo(p, value);
+}
+
+class MessageHeader
+{
+	ConstString_t _msgType;
+	StringRom _schClass;
+	StringRom _schType;
+public:
+	MessageHeader(ConstString_t msgType, StringRom schClass, StringRom schType)
+		:_msgType(msgType), _schClass(schClass), _schType(schType) {}
+
+	StringRom msgType() const { return ConstString(_msgType); }
+	StringRom schClass() const { return _schClass; }
+	StringRom schType() const { return _schType; }
+
+	StringRom part(msgPart p) const
+	{
+		switch (p)
+		{
+		case MSGTYPE: return msgType();
+		case SCHCLASS: return schClass();
+		case SCHTYPE: return schType();
+		}
+	}
+};
 
 class Message : public Printable
 {
-	StringRom _msgType;
-	StringRom _schClass;
-	StringRom _schType;
-
-	String _target;
+protected:
+	const MessageHeader _header;
+	const String _target;
 	const Printable& _content;
 
 public:
+
 	Message(
-		StringRom msgType,
-		StringRom schClass,
-		StringRom schType,
+		const MessageHeader& header,
 		const String& target,
 		const Printable& content
-		) :_msgType(msgType), _schClass(schClass), _schType(schType), _target(target), _content(content) {}
-
-	template<typename Tkey,typename Tvalue>
-	static size_t printKeyTo(Print& p,const Tkey& key,const Tvalue& value)
-	{
-		return
-			p.print(key) +
-			p.print('=') +
-			p.print(value) + p.print('\n');
-	}
+		) :_header(header),_target(target), _content(content) {}
 
 	virtual size_t printTo(Print& p) const;
-
 };
 
 #endif

@@ -36,12 +36,13 @@
  /*******************************************************************
 
  *******************************************************************/
-static int gNextPacketPtr;
+static int gNextPacketPtr = -1;
 static byte Enc28j60Bank;
-uint8_t _mac[6];
-int _readAddr;
-int _writePos;
-int _available;
+
+OptionMacAddress _mac;
+
+int _writePos = -1;
+int _available = -1;
 long _checksum;
 long _headerSum;
 long _udpSum;
@@ -277,10 +278,16 @@ long _udpSum;
 
 #define FULL_SPEED  1   // switch to full-speed SPI for bulk transfers
 
+static void xferSPI (byte data) {
+    SPDR = data;
+    while (!(SPSR&(1<<SPIF)))
+        ;
+}
 
-void enableChip () {
+void enableChip(byte data) {
     cli();
     digitalWrite(ENC28J60_PIN, LOW);
+	xferSPI(data);
 }
 
 static void disableChip () {
@@ -288,21 +295,11 @@ static void disableChip () {
     sei();
 }
 
-static void xferSPI (byte data) {
-    SPDR = data;
-    while (!(SPSR&(1<<SPIF)))
-        ;
-}
 
-byte readByteFast() {
-	_readAddr++;
-	xferSPI(0x00);
-	return SPDR;
-}
+// Opérations
 
 static byte readOp (byte op, byte address) {
-    enableChip();
-    xferSPI(op | (address & ADDR_MASK));
+    enableChip(op | (address & ADDR_MASK));
     xferSPI(0x00);
     if (address & 0x80)
         xferSPI(0x00);
@@ -311,37 +308,37 @@ static byte readOp (byte op, byte address) {
     return result;
 }
 
-static void writeOp (byte op, byte address, byte data) {
-    enableChip();
-    xferSPI(op | (address & ADDR_MASK));
-    xferSPI(data);
-    disableChip();
+static void writeOp(byte op, byte address, byte data) {
+	enableChip(op | (address & ADDR_MASK));
+	xferSPI(data);
+	disableChip();
 }
 
+// Read buffer
+
+void startReadBuf() {
+	enableChip(ENC28J60_READ_BUF_MEM);
+}
+
+byte readByte() {
+	_available--;
+	xferSPI(0x00);
+	return SPDR;
+}
 
 static void readBuf(word len, byte* data) {
-    enableChip();
-    xferSPI(ENC28J60_READ_BUF_MEM);
-    while (len--) {
-		*data++ = readByteFast();
+	while (len--) {
+		*data++ = readByte();
     }
-    disableChip();
 }
 
-static byte readByte() {
-	enableChip();
-	xferSPI(ENC28J60_READ_BUF_MEM);
-	byte b = readByteFast();
-	disableChip();
-	return b;
-}
 
 static word readWordLE() {
-	word w;
-	readBuf(1,(byte*)&w+1);
-	readBuf(1,(byte*)(&w));
+	word w = (word)readByte();
+	w &= (word)readByte() << 8;
 	return w;
 }
+
 static word readWordBE() {
 	word w;
 	readBuf(sizeof(w),(byte*)&w);
@@ -349,21 +346,22 @@ static word readWordBE() {
 }
 
 static void drop(word len) {
-
-    enableChip();
-    xferSPI(ENC28J60_READ_BUF_MEM);
-    while (len--) {
-        xferSPI(0x00);
-        SPDR;
+	while (len--) {
+		readByte();
     }
-    disableChip();
 }
 
+// Write Buffer
+
+
+void startWriteBuf()
+{
+    enableChip(ENC28J60_WRITE_BUF_MEM);
+}
 
 static void writeBuf(word len, const byte* data) {
-    enableChip();
-    xferSPI(ENC28J60_WRITE_BUF_MEM);
-    while (len--)
+	startWriteBuf();
+	while (len--)
         xferSPI(*data++);
     disableChip();
 }
@@ -450,21 +448,12 @@ void filterXplCmnd() {
 	writeReg(EPMCS, 0xE325);
 }
 
-
-
-
-
-
-
-
-
 void startWrite(int pos=0)
 {
 	disableChip();
 	writeReg(EWRPT, pos + TXSTART_INIT + 1); // TODO : dont know why i need +1
 	_writePos = pos;
-	enableChip();
-	xferSPI(ENC28J60_WRITE_BUF_MEM);
+	enableChip(ENC28J60_WRITE_BUF_MEM);
 }
 
 void printByte(byte b)
@@ -502,7 +491,7 @@ void writeHeader()
 
 // Ethernet
 	printBytes('\xFF',6);       // broadcast mac
-	for (byte i = 0; i<6; i++) printByte((char)_mac[i]);
+	for (byte i = 0; i<6; i++) printByte(_mac[i].get());
 	printWord(0x800);
 
 // IP
@@ -542,10 +531,8 @@ void writeHeader()
 	disableChip();
 }
 
-byte initialize() {
-	DBG("<init>");
+void initialize() {
 	_writePos = -1;
-	_readAddr = -1;
 
 	if (bitRead(SPCR, SPE) == 0) initSPI();
 
@@ -578,12 +565,12 @@ byte initialize() {
 	writeRegByte(MABBIPG, 0x12);
 	writeReg(MAMXFL, MAX_FRAMELEN);
 
-	writeRegByte(MAADR5, _mac[0]); // TODO : could be stored in eeprom only
-	writeRegByte(MAADR4, _mac[1]);
-	writeRegByte(MAADR3, _mac[2]);
-	writeRegByte(MAADR2, _mac[3]);
-	writeRegByte(MAADR1, _mac[4]);
-	writeRegByte(MAADR0, _mac[5]);
+	writeRegByte(MAADR5, _mac[0].get());
+	writeRegByte(MAADR4, _mac[1].get());
+	writeRegByte(MAADR3, _mac[2].get());
+	writeRegByte(MAADR2, _mac[3].get());
+	writeRegByte(MAADR1, _mac[4].get());
+	writeRegByte(MAADR0, _mac[5].get());
 	writePhy(PHCON2, PHCON2_HDLDIS);
 	SetBank(ECON1);
 	writeOp(ENC28J60_BIT_FIELD_SET, EIE, EIE_INTIE | EIE_PKTIE);
@@ -598,32 +585,25 @@ byte initialize() {
 
 	writeHeader();
 
-
-	byte rev = readRegByte(EREVID);
-	// microchip forgot to step the number on the silcon when they
-	// released the revision B7. 6 is now rev B7. We still have
-	// to see what they do when they release B8. At the moment
-	// there is no B8 out yet
-	if (rev > 5) ++rev;
-	return rev;
 }
 
-bool ENC28J60Adapter::begin()
+void ENC28J60Adapter::begin()
 {
-	DBG(F("<begin ENC28J60>"));
+	static bool init = false;
 
-	setMac(_mac);
+	if (!init)
+	{
+		DBG(F("<begin ENC28J60>"));
+		initialize();
+		init = true;
+	}
 
-	initialize();
-
-	return true;
 }
 
 bool ENC28J60Adapter::start() {
-	DBG("<start>");
+	begin();
 
 	writeReg(ETXND, TXSTOP_INIT);
-
 	_checksum = _udpSum;
 	startWrite(42);
 
@@ -644,13 +624,13 @@ bool ENC28J60Adapter::send() {
 	startWrite(38);
 	printWord(len - 34);  // UDP lenght
 	printWord(getChecksum(udpSum + 2*(len - 34)));
-/*	*/
+
 	disableChip();
 
 	writeReg(ETXND, TXSTART_INIT + len);
 
 	writeOp(ENC28J60_BIT_FIELD_SET, ECON1, ECON1_TXRTS);
-	DBGLN("<sent>",len);
+
 	return true;
 }
 
@@ -663,14 +643,7 @@ size_t ENC28J60Adapter::write(uint8_t val) {
 /////////////////////////////////////////////////////////////////////
 // Reading
 /////////////////////////////////////////////////////////////////////
-void setReadPos(int pos)
-{
-	if (_readAddr != pos)
-	{
-		writeReg(ERDPT, pos);
-		_readAddr = pos;
-	}
-}
+void setReadPos(int pos) { writeReg(ERDPT, pos); }
 
 void packetRelease() {
 	if (gNextPacketPtr - 1 > RXSTOP_INIT)
@@ -679,72 +652,85 @@ void packetRelease() {
 		writeReg(ERXRDPT, gNextPacketPtr - 1);
 	writeOp(ENC28J60_BIT_FIELD_SET, ECON2, ECON2_PKTDEC);
 
-	_readAddr = -1;
-	_available = 0;
+	_available = -1;
 }
 
 word packetReceive() {
 	word len = 0;
+	_available = -1;
+
 	if (readRegByte(EPKTCNT) > 0)
 	{
 		writeReg(ERDPT, gNextPacketPtr);
 
-		struct {
-			word nextPacket;
-			word byteCount;
-			word status;
-		} header;
+		enableChip(ENC28J60_READ_BUF_MEM);
 
-		readBuf(sizeof header, (byte*)&header);
+		gNextPacketPtr = readWordBE();
+		len = readWordBE() -4; //byteCount remove the CRC count
 
-		gNextPacketPtr = header.nextPacket;
-		len = header.byteCount - 4; //remove the CRC count
-
-		if ((header.status & 0x80) == 0)
+		if ((readWordBE() & 0x80) == 0) // status
 		{
 			len = 0;
 			packetRelease();
 		}
+		else
+			_available = len;
+
+		disableChip();
 	}
 	return len;
 }
 
-
 int ENC28J60Adapter::available()
 {
-	if (_readAddr < 0)
+	if (_available < 0)
 	{
-		int addr = gNextPacketPtr+13+35; 
-		int len = packetReceive();
-		if (!len) return 0;
-		setReadPos(addr);
-		_available = len-42;
+		begin();
+		word len = packetReceive();
+		if (len)
+		{
+			if (_available>0)
+			{
+				enableChip(ENC28J60_READ_BUF_MEM);
+				drop(42);
+				disableChip();
+			}
+			else
+			{
+				packetRelease();
+				return 0;
+			}
+		}
+		else return 0;
 	}
-	else
-		return _available;
+	return _available;
 }
-
 
 int ENC28J60Adapter::read()
 {
 	if (available())
 	{
-		_available--;
-		return readByte();
+		enableChip(ENC28J60_READ_BUF_MEM);
+		byte b = readByte();
+		disableChip();
+		return b;
 	}
 	return -1;
 }
 
 int ENC28J60Adapter::peek() 
 {
-	writeOp(ENC28J60_BIT_FIELD_CLR, ECON2, ECON2_AUTOINC);
-		enableChip();
-			xferSPI(ENC28J60_READ_BUF_MEM);
-			xferSPI(0x00);
-			byte b = SPDR;
+	if (available())
+	{
+		writeOp(ENC28J60_BIT_FIELD_CLR, ECON2, ECON2_AUTOINC);
+		enableChip(ENC28J60_READ_BUF_MEM);
+		xferSPI(0x00);
+		byte b = SPDR;
 		disableChip();
-	writeOp(ENC28J60_BIT_FIELD_SET, ECON2, ECON2_AUTOINC);
-	return b;
+		writeOp(ENC28J60_BIT_FIELD_SET, ECON2, ECON2_AUTOINC);
+		return b;
+	}
+	return -1;
 }
 
 void ENC28J60Adapter::flush()

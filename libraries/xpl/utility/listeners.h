@@ -23,128 +23,57 @@
 */
 #ifndef LISTENER_H
 #define LISTENER_H
-#include "defines.h"
+#include <xpl.h>
 
-#include "nodes.h"
+#include "linkedlist.h"
+#include "message.h"
 
-class Listener
+typedef byte nbparsers_t;
+
+class KeyValue
 {
 public:
-	StringRom key;
-	Listener(StringRom s) :key(s) {}
-};
+	String key;
+	String value;
+	KeyValue():key(""), value("") {}
+	KeyValue(String k, String v) :key(k), value(v) {}
 
-template<class cls>
-class ListenerParent : public List<cls>
-{
-public:
-	cls* get(const StringRom& s)
+	bool is(StringRom _key,StringRom _value) const { return (key == _key && value == _value); }
+
+	bool parse(StringRom _key, String& store) const
 	{
-		for (Iterator<cls> c = List<cls>::first(); c; ++c)
-		{
-			if (c->key == s) return &*c;
-		}
-		cls* newObj = new cls(s);
-
-		this->add(newObj);
-
-		return newObj;
-	}
-
-	cls* get(const String& s)
-	{
-		for (Iterator<cls> c = List<cls>::first(); c; ++c)
-		{
-			if (s == c->key) return &*c;
-		}
-		return NULL;
-	}
-
-};
-
-
-
-class MessageParser {
-protected:
-	String _key;
-	String _value;
-
-
-	bool isCommandRequest() { return (_key == S(command) && _value == S(request)); }
-
-public:
-	static StringRom msgType() { return S(cmnd); }
-
-	bool parseKey(const StringRom& key, String& store)
-	{
-		if (_key == key) { store = _value; return true; }
+		if (key == _key) { store = value; return true; }
 		return false;
 	}
-	void setKey(const String& key){ _key = key; DBG(key); }
-	void setValue(const String& value){ _value = value; DBG(value); }
-	virtual bool parse() = 0;
-	virtual void process() {};
-	void finish() { process();  delete this; }
+
 };
 
-class ListenerSchemaBase : public Listener
+class MessageParser : public AutoList<MessageParser>
 {
+	bool _selected;
+private:
+	MessageHeader _header;
+
+protected:
+
 public:
-	ListenerSchemaBase() :Listener(S(xpl)) {}
-	ListenerSchemaBase(StringRom sr) :Listener(sr) {}
-	void hook(StringRom msgType, StringRom schClass, StringRom schType);
-	virtual MessageParser * getParser() { return NULL; }
+	MessageHeader& header() { return _header; }
+	MessageParser(MessageHeader header) :_header(header) {};
+
+	virtual bool parse(const KeyValue& key) = 0;
+	static nbparsers_t parseSelected(const KeyValue& kv);
+
+	virtual bool process() { return true; }
+	static nbparsers_t processSelected();
+
+	bool selected() const { return _selected; }
+	bool select(bool sel);
+	static nbparsers_t selectAll();
+
+	nbparsers_t select(msgPart part, const String& s);
+	static nbparsers_t selectAll(msgPart part, const String& s);
 };
 
-template <class cls> 
-class ListenerSchema : public ListenerSchemaBase
-{
-public:
-	ListenerSchema<cls>(StringRom sr) : ListenerSchemaBase(sr) {}
-	cls* getParser() { return new cls(); }
-};
-
-class ListenerSchClass : public Listener, public List<ListenerSchemaBase>
-{
-public:
-	ListenerSchClass(StringRom sr) :Listener(sr) {}
-
-	//template<typename StringT>
-	ListenerSchemaBase* get(const String& s)
-	{
-//		for (ListenerSchemaBase* c = this->child(); c; c = c->next())
-		for (Iterator<ListenerSchemaBase> c = first(); c; ++c)
-		{
-			if (s == c->key) return &*c;
-		}
-		return NULL;
-	}
-
-};
-
-class ListenerMsgType : public Listener, public ListenerParent<ListenerSchClass>
-{
-public:
-	ListenerMsgType(StringRom sr) :Listener(sr) {}
-};
-
-class ListenersClass : public ListenerParent<ListenerMsgType>
-{
-public:
-	template <class parser>
-	void hook() { get(parser::msgType())->get(parser::schClass())->add(new ListenerSchema<parser>(parser::schType())); }
-//	void hook() { get(S(xpl))->get(S(xpl))->AddChild(new ListenerSchema<parser>(parser::schType)); }
-	/*
-	ListenerSchemaBase& reg(StringRom msgType, StringRom schClass, StringRom schType, ListenerSchemaBase* schema)
-	{
-		ListenerParent<ListenerMsgType>::get(msgType)->get(schClass)->AddChild(schema);
-	}*/
-};
-
-
-
-
-extern ListenersClass Listeners;
 
 
 

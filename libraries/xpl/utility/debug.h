@@ -24,7 +24,7 @@
 
 #ifndef DEBUG_H
 #define DEBUG_H
-#include "defines.h"
+#include <xpl.h> // TODO : make it independante from xpl
 
 #ifdef DEBUG_LCD
 #include <Wire.h> 
@@ -39,7 +39,7 @@ extern LiquidCrystal_I2C lcd;
 #define DBG(s) Serial.print(s);
 #else
 #define DBGLN(s,v) ;
-#define DBG(s,v) ;
+#define DBG(s) ;
 #endif
 
 #if DEBUG>=1
@@ -91,13 +91,12 @@ long printMemCost(const StringRom msg);
 
 #ifdef DEBUG
 #define _SETUP() void setup() { Serial.begin(115200);
-#define _LOOP() } void loop() {DBG_MEM(S(loop));
-#define _END  }
+#define _LOOP() } void loop() {DBG_MEM(F("loop"));
 #else
 #define _SETUP() int main(void) {
 #define _LOOP() while(1)
-#define _END }
 #endif
+#define _END  }
 
 extern bool debug_flag;
 

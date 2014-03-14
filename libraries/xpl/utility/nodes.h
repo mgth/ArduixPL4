@@ -26,6 +26,8 @@
 #include <Arduino.h>
 #include "debug.h"
 
+#define foreach(typ,iter,list) for(Iterator<typ> iter=(list).first();iter;++iter)
+
 template<class cls> class List;
 template<class cls> class Iterator;
 
@@ -49,18 +51,19 @@ class Iterator
 {
 private:
 	Node<cls>* _position;
-	Node<cls>* _first;
+//	Node<cls>* _first;
 
 public:
-	Iterator() {};
-	cls& operator*() const { return *_position->_data; }     /* use instead of * */
+	Iterator():_position(NULL) {};
+	cls& operator*() const { return *_position->_data; }
 	cls* operator->() const { return _position->_data; }
-	void operator++() { _position = _position->_next; }            /* use instead of ++ */
-	bool operator==(Iterator b) const { return _position = b._position; } /* use instead of == */
+	void operator++() { _position = _position->_next; }
+	bool operator==(Iterator b) const { return _position = b._position; }
 
 	operator bool() const {
 		if (_position) return (_position->_next != NULL);
-		return _first == NULL;
+		return false;
+		//		return _first == NULL;
 	}
 
 	friend class List<cls>;
@@ -76,7 +79,8 @@ public :
 	Iterator<cls> first()
 	{
 		Iterator<cls> iter;
-		iter._position = iter._first = _first;
+//		iter._position = iter._first = _first;
+		iter._position = _first;
 		return iter;
 	}
 

@@ -22,7 +22,8 @@
 	  http://www.mgth.fr
 */
 
-C(xpl)
+//xPL
+	C(xpl)
 	C(stat)
 	C(cmnd)
 	C(trig)
@@ -41,7 +42,7 @@ C(xpl)
 	CF(_deviceid,"dummy")
 	CF(_instanceid,"default")
 
-	// sensor
+// sensor
 	C(sensor)
 	C(device)
 	C(type)
@@ -60,17 +61,21 @@ C(xpl)
 //	C(current)
 	C(direction)
 	C(distance)
+		C(m)
 	C(energy)
 	C(fan)
 	C(generic)
 	C(humidity)
+	 CF(_percent,"%")
 	C(input)
 	C(output)
 	C(power)
 	C(pressure)
+		C(Pa)
 	C(setpoint)
 	C(speed)
 	C(temp)
+		C(c)
 	C(uv)
 	C(voltage)
 	C(volume)
@@ -83,15 +88,14 @@ C(xpl)
 	CF(ip_mask,"ip-mask")
 	C(dhcp)
 
-	// hbeat
+// hbeat
 	C(hbeat)
 	C(basic)
 	C(end)
 	C(group)
 	C(filter)
 
-
-
+// config
 	C(response)
 	C(newconf)
 	C(config)
@@ -102,7 +106,7 @@ C(xpl)
 	C(state)
 	C(status)
 
-	//booleans
+//booleans
 	C(on)
 	C(off)
 	CF(_true,"true")
@@ -114,7 +118,7 @@ C(xpl)
 
 	CF(_asterisk,"*")
 
-	//control
+//control
 	C(control)
 	C(enable)
 	C(disable)
@@ -126,13 +130,12 @@ C(xpl)
 	C(set)
 	C(data1)
 
-	//Lighting
+//Lighting
 	C(lighting)
 	C(default)
 	C(last)
 
 	CF(fade_rate,"fade-rate")
-
 
 	C(command)
 	C(activate)
@@ -160,24 +163,24 @@ C(xpl)
 
 
 	C(ok)
-	CF(not_found,"not-found");
+	CF(not_found,"not-found")
 
-	CF(report_on_manual,"report-on-manual");
-	CF(channel_count,"channel_count");
-	CF(primary_channel,"primary-channel");
+	CF(report_on_manual,"report-on-manual")
+	CF(channel_count,"channel_count")
+	CF(primary_channel,"primary-channel")
 
-	CF(device_count,"device-count");
-	CF(scene_count,"scene-count");
-	CF(net_count,"net-count");
-	CF(preferred_net,"preferred-net");
-	CF(scenes_ok,"scenes-ok");
-	CF(channels_ok,"channels-ok");
-	CF(fade_rate_ok,"fade-rate-ok");
+	CF(device_count,"device-count")
+	CF(scene_count,"scene-count")
+	CF(net_count,"net-count")
+	CF(preferred_net,"preferred-net")
+	CF(scenes_ok,"scenes-ok")
+	CF(channels_ok,"channels-ok")
+	CF(fade_rate_ok,"fade-rate-ok")
 
-	C(protocol);
-	CF(_protocol,"ARXPL");
+	C(protocol)
+	CF(_protocol,"ARXPL")
 
-	// HTML
+// HTML
 	CF(html_header,
 	"HTTP/1.0 200 OK\n"
     "Content-type: text/html\n"
@@ -189,7 +192,7 @@ C(xpl)
 	//C(dummytotestcompileroptimization)
 
 
-	// LCD Debug
+// LCD Debug
 
-	CF(_blkline,"                    ");
+	CF(_blkline,"                    ")
 	C(loop)

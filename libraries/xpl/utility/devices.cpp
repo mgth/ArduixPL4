@@ -23,36 +23,73 @@
 */
 #include "devices.h"
 
-#include "xpl.h"
+#include "adapter.h"
 #include "message.h"
 
-DevicesClass Devices;
-Device* DeviceParser::device() { return Devices.get(_keyDevice, _keyType); }
+xPL_Device* DeviceParser::device() { return xPL_Device::get(_keyDevice, _keyType); }
 
-Device* DevicesClass::get(const String& name, const String& type) {
-//	for (Device* dev = this->child(); dev; dev=dev->next())
-	for (Iterator<Device> iDevice = List<Device>::first(); iDevice; ++iDevice)
+xPL_Device* xPL_Device::get(const String& name, const String& type)
+{
+	foreach (xPL_Device, d)
 	{
-		if (iDevice->Is(name, type)) return &*iDevice;
+		if (d->is(name, type)) return &*d;
 	}
 	return NULL;
 }
 
 size_t SensorContent::printTo(Print& p) const {
 	size_t n =
-		Message::printKeyTo(p, S(device), _device.name()) +
-		Message::printKeyTo(p, S(type), _device.type());
+		printKeyTo(p, F("device"), _device.name()) +
+		printKeyTo(p, F("type"), _device.type());
 
 	String value;
 
-	if (_request == S(current)) value = _device.current();
-	else if (_request == S(name)) value = _device.name();
+	if (_request == F("current"))
+		n += printKeyTo(p, _request, _device);
+	else if (_request == F("name"))
+		n += printKeyTo(p, _request, _device.name());
 	else return n;
-	n += Message::printKeyTo(p, _request, value);
+
+	if (_request == F("current")) n += printKeyTo(p, F("units"), _device.units());
 	return n;
 }
 
-void SensorRequest::process() {
-		xPL.send(Message(S(stat), S(sensor), S(basic), "*", SensorContent(*device(), _request)));
-	
+class SensorRequest : public DeviceParser
+{
+	String _request;
+public:
+	SensorRequest() :DeviceParser(MessageHeader(cs_cmnd, F("sensor"), F("request"))) {}
+
+	bool parse(const KeyValue& kv)
+	{
+		return kv.parse(F("request"),_request)
+			|| DeviceParser::parse(kv);
 	}
+	bool process()
+	{
+		return Adapter::send(Message(MessageHeader(cs_stat, F("sensor"), F("basic")), "*", SensorContent(*device(), _request)));
+	}
+} _sensorRequest;
+
+class ControlBasic : public DeviceParser
+{
+public:
+	ControlBasic() :DeviceParser(MessageHeader(cs_cmnd, F("control"), F("basic"))){}
+	String _current;
+	String _data1;
+
+	bool parse(const KeyValue& key)
+	{
+		return key.parse(F("current"),_current)
+			|| DeviceParser::parse(key);
+	}
+	bool process()
+	{
+		if (device())
+		{
+			device()->setValue(_current, _data1);
+			return true;
+		}
+		return false;
+	}
+} _controlBasic;

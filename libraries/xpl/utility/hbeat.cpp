@@ -22,41 +22,108 @@
 	  http://www.mgth.fr
 */
 
-//#include <arduino.h>
-#include "xpl.h"
 #include "hbeat.h"
 #include "listeners.h"
+#include "adapter.h"
+#include "tasks.h"
+#include "message.h"
 
-HbeatTask HbeatTask::Task;
-bool HbeatRequest::parse()
+
+unsigned long _lastHbeatTime;
+bool _trigHbeat = true;
+
+StringRom s_interval() { return F("interval"); }
+StringRom s_newconf() { return F("newconf"); }
+StringRom s_default() { return F("default"); }
+
+
+OptionT<int> Hbeat::interval(24, cs_option, s_interval(), XPL_CONFIG_INTERVAL);
+OptionString Hbeat::newconf(7, cs_reconf, s_newconf(), 16, s_default());
+
+/*
+Hbeat message content
+*/
+class HbeatContent : public Printable
 {
-	return isCommandRequest() && HbeatTask::Task.trig();
-}
-
-size_t HbeatContent::printTo(Print& p) const
-{
-	Message::printKeyTo(p, S(interval), String(HbeatTask::Task.intervalMinutes()));
-}
-
-bool HbeatTask::begin()
-{
-	DBG(F("<begin hbeat>"))
-	_trigHbeat = true;
-	_interval = XPL_CONFIG_INTERVAL * 60000;
-	_configured = false;
-
-	Listeners.hook<HbeatRequest>();
-	return true;
-}
-
-void HbeatTask::loop()
-{
-	if (_trigHbeat || (millis() - _lastHbeatTime) >= _interval) {
-		_lastHbeatTime = millis();
-		_trigHbeat = false; 
-
-		xPL.send(Message(S(stat), _configured?S(hbeat):S(config), S(basic), "*", HbeatContent()));
+	virtual size_t printTo(Print& p) const
+	{
+		printKeyTo(p, F("interval"), Hbeat::interval);
 	}
+};
 
-}
+
+// TASK : HbeatTask : send hbeat.basic or hbeat.config at every _interval.
+
+class HbeatTask: public Task
+{
+public:
+	//first hbeat occure at boot
+	HbeatTask() { trigTask(); }
+	virtual void run()
+	{
+		Adapter::send(
+			Message(
+				MessageHeader(
+						cs_stat,
+						Option::configured?F("hbeat"):F("config"),
+						F("basic")
+					)
+				, "*"
+				, HbeatContent()));
+
+		trigTask(Hbeat::interval*60000);
+	}
+} _hbeatTask;
+
+class NullPrintable : public Printable
+{
+	size_t printTo(Print& p) const { return 0; }
+};
+
+// TASK : NewConf
+
+class NewConf : public Task
+{
+	String _newname;
+public:
+	NewConf(const String& newname) :_newname(newname) {};
+
+	void run() {
+		MessageHeader h(
+			cs_stat,
+			Option::configured ? F("hbeat") : F("config"),
+			F("end")
+		);
+
+		if ( Adapter::send(Message(h, "*", NullPrintable())) )
+		{
+			Hbeat::newconf = _newname;
+			Option::configured = true;
+			_hbeatTask.trigTask();
+			delete(this);
+		}
+	}
+};
+
+void NewconfOption::parse(const String& value) {
+	(new NewConf(value))->trigTask();
+};
+
+
+// PARSER : xpl-cmnd - hbeat.request
+
+class HbeatRequestParser : public MessageParser
+{
+public:
+	HbeatRequestParser() :MessageParser(MessageHeader(cs_cmnd, F("hbeat"), F("request"))) {}
+	bool parse(const KeyValue& kv)
+	{
+		if (kv.is(F("command"),F("request")))
+		{
+			_hbeatTask.trigTask();
+			return true;
+		}
+		return false;
+	}
+} _hbeatRequest;
 

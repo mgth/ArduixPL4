@@ -1,6 +1,6 @@
 /*
   ArduixPL - xPL library for Arduino(tm)
-  Copyright (c) 2012/2014 Mathieu GRENET.  All right reserved.
+  Copyright (c) 2012/2013 Mathieu GRENET.  All right reserved.
 
   This file is part of ArduixPL.
 
@@ -17,34 +17,13 @@
     You should have received a copy of the GNU General Public License
     along with ArduixPL.  If not, see <http://www.gnu.org/licenses/>.
 
-	  Modified 2014-1-7 by Mathieu GRENET 
+	  Modified 2013-2-19 by Mathieu GRENET 
 	  mailto:mathieu@mgth.fr
 	  http://www.mgth.fr
 */
-
-#include "xpl.h"
-
-#include "tasks.h"
+#include "sensors.h"
 #include "adapter.h"
-#include <Arduino.h>
-#include "debug.h"
+#include "message.h"
 
-xplClass xPL;
 
-void xplClass::begin(Adapter& adapter) {
-	_adapter = &adapter;
-	DBG("<adapter reg>");
-	Tasks.reg(adapter);
-	DBG("<Hbeat reg>");
-	Tasks.reg(HbeatTask::Task);
-	Tasks.begin();
-}
 
-void xplClass::loop() {
-	Tasks.loop();
-}
-
-size_t xplClass::send(const Printable& p)
-{
-	return _adapter->send(p);
-}

@@ -24,29 +24,42 @@
 #ifndef TASKS_H
 #define TASKS_H
 
-#include "nodes.h"
+#include "linkedlist.h"
+#include "limits.h"
+
+typedef unsigned long time_t;
 
 class Task
+	:public LinkedList<Task>
 {
+	time_t _dueTime;
+
+protected:
+	// returns scheduled position against t
+	int compare(time_t t) const;
+
+	// to be overriden for task execution
+	virtual void run() = 0;
+
 public:
-	virtual bool begin() { return true; }
-	virtual void loop() = 0;
+
+	// run next task in queue
+	static void loop();
+
+	// schedule next execution at determined delay in ms
+	void trigTask(time_t delay = 0);
+
+	// returns scheduled execution time
+	time_t dueTime() const { return _dueTime; }
+
+	// by default new task is not scheduled
+	Task() { }
+
+	// might give a delay for first execution
+	Task(time_t delay) { trigTask(delay); }
+
+	//for Task to be sortable
+	int compare(const Task& task) const;
 };
 
-
-class TasksClass : public List<Task>
-{
-
-public:
-	void reg(Task& t);
-
-	void begin();
-
-	void loop();
-
-};
-
-
-
-extern TasksClass Tasks;
 #endif

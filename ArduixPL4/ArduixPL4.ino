@@ -1,40 +1,48 @@
-#include <SPI.h>
-#include "xpl.h"
-
-//#include <Ether net.h>
+#include <xpl.h>
 
 #include <xpl_ENC28J60.h>
-#include <utility/config.h>
-#include <utility/devices.h>
-
+#include "DallasTemperature.h"
+#include "utility/hbeat.h"
 ENC28J60Adapter adapter;
-
-class : public Device
-{
-	String _current;
-	StringRom type() const { return S(temp); }
-public:
-	String current() const { return _current; }
-	void setCurrent(const String & current,const String & data1) { _current = current; }
-} dummy;
+DallasTemperatureGlobalTask tempTask(60000);
 
 _SETUP()
 {
+	DallasTemperatureMulti::discover(12);
 
-	Tasks.add(ConfigTask::Task);
-//	Tasks.add(&Devices::Task);
+	int i = 0;
+	foreach(DallasTemperatureMulti, s)
+	{
+		String name = "T" + String(i++);
+		//s->addFilter(new KalmanFilter<int,100>(1));
+		//s->addFilter(new Calibration2ndOrder(-0.000132642563198119, 1.00520159709975, 0.144975994513031));
+		//s->addFilter(new Calibration2ndOrder<int,128>(0, 129, 19));
+		s->addFilter(new ThresholdFilter<int>(12, 5 * 60000));
+		s->addFilter(new xPL_Sensor<int,128>(name, F("temp"), F("c") ));
+//		if (i == 0) s->addFilter(new OutputFilterSerial);
+//		i++;
+	}
 
-
-	xPL.begin(adapter);
-
-	Devices.add(dummy);
-	Devices.begin();
-	DBG_MEM(S(loop));
-
+	DBG_MEM(F("loop"));
+	//int a;
+	//a = MessageParser::selectAll();
+	//DBGLN("all:",a);
+	//a = MessageParser::selectAll(MSGTYPE, "cmnd");
+	//DBGLN("cmnd:",a);
+	//a = MessageParser::selectAll(SCHCLASS, "config");
+	//DBGLN("config:",a);
+	//a = MessageParser::selectAll(SCHTYPE, "list");
+	//DBGLN("current:",a);
+	//a =MessageParser::parseSelected(KeyValue("command", "request"));
+	//DBGLN("parse:",a);
+	//a =	MessageParser::processSelected();
+	//DBGLN("process:",a);
+	DBGLN("tasks:", Task::count());
 }
 
 _LOOP()
 {
-	xPL.loop();
+//	DBG('.'); delay(100);
+	Task::loop();
 }
 _END

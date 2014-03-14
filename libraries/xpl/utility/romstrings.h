@@ -30,26 +30,89 @@ way to handle that
 #define ROMSTRINGS_H
 
 #include <avr/pgmspace.h>
-/*
-#if !defined(pgm_get_far_address)
-#undef PROGMEM
-#define PROGMEM __attribute__(( section(".progmem.data") ))
-#endif
+#include <WString.h>
+
+//typedef const char* StringRom;
+
+typedef const __FlashStringHelper* StringRom;
+
+/**
+* Create constant string in program memory. Allow IOStream output
+* operator. Allows link time reduction of equal strings or substrings.
+* @param[in] s string literal (at compile time).
+* @return string literal in program memory.
 */
-#define S(s) CStr::s_##s()
+#if 1
 
-class CStr 
+#undef PSTR
+#define PSTR(str) __PSTR1(str,__COUNTER__)
+#define __PSTR1(str,num) __PSTR2(str,num)
+#define __PSTR2(str,num) \
+	(__extension__(\
+{ \
+	const char* ptr; \
+	asm volatile (\
+	".pushsection .progmem.data, \"SM\", @progbits, 1" "\n\t" \
+	"PSTR_" #num ": .string " #str "\n\t" \
+	".popsection" "\n\t" \
+	); \
+	asm volatile (\
+	"ldi %A0, lo8(PSTR_" #num ")" "\n\t" \
+	"ldi %B0, hi8(PSTR_" #num ")" "\n\t" \
+	: "=d" (ptr) \
+	); \
+	ptr; \
+} \
+	))
+	
+//#define S(string) F(#string)
+
+typedef enum ConstString_t
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+: unsigned char
+#endif
 {
-public:
-
-#define C(s) static const __FlashStringHelper* s_##s()  { return F(#s); }; 
-#define CF(f,s) static const __FlashStringHelper* s_##f()  { return F(s); }; 
-
-
-#include "../romstrings.lst"
+	cs_stat,
+	cs_trig,
+	cs_cmnd,
+	cs_reconf,
+	cs_option,
+	cs_device,
+	cs_type
 };
 
+StringRom ConstString(ConstString_t cs);
 
+#else
+
+
+#define S(string) (StringRom)s_##string
+
+#define C(string)      extern  const char s_##string[] ;
+#define CF(var,string) extern  const char s_##var[] ;
+
+#include "../romstrings.lst"
+
+#undef C
+#undef CF
+#define C(string) cs_##string ,
+#define CF(var,string) cs_##var ,
+
+typedef enum ConstString_t 
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+	: unsigned char
+#endif
+{
+	cs_stat,
+	cs_trig,
+	cs_cmnd
+};
+
+#define CS(string) ConstString(cs_##string)
+
+StringRom ConstString(ConstString_t cs);
+
+#endif
 
 #endif
 

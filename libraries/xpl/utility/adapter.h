@@ -24,53 +24,52 @@
 
 #ifndef ADAPTER_H
 #define ADAPTER_H
+#include <Printable.h>
+
+#include <xpl.h>
 #include "tasks.h"
-#include "Printable.h"
-#include "defines.h"
 
 class Adapter : public Task, public Stream
+
+#ifdef XPL_ADAPLTER_MULTI
+	, public AutoList<Adapter>
+#endif
+
 {
-protected:
-	void setMac(uint8_t* mac);
+#ifndef XPL_ADAPLTER_MULTI
+	static Adapter* _adapter;
+#endif
+	time_t _interval;
 
-public:
+	void parse();
 
+	// prepare a new message
 	virtual bool start() = 0;
+	// send message
 	virtual bool send() = 0;
 
-	virtual void loop();
+public:
+	Adapter();
 
-	size_t send(const Printable& p)
-	{
-		DBG_MEM(F("send"));
-			
-		Serial.println(p);
+	//send message
+	size_t sendMessage(const Printable& p);
 
-		if (start())
-		{
-			size_t n = print(p);
+	//send message with all installed adapters
+	static size_t send(const Printable& p);
 
+	// Task
+	virtual void run();
 
-			if (send()) return n;
-		}
-		return 0;
-	}
+	// Read string until terminator, or line end
+	String readStringUntil(char terminator);
 
-	String readStringUntil(char terminator)
-	{
-		String ret="";
-		int c = read();
-		while ( c >= 0 && c != terminator && c != '\n' )
-		{
-			ret += (char)c;
-			c = read();
-		}
-		return ret;
-	}
+	void flushUntil(char terminator);
+	int readChar(char c);
+	char cmpChar(char c, char terminator);
 
-	bool cmpUntil(char term, StringRom cmp) { return readStringUntil(term) == cmp; }
-	bool cmpUntil(char term, String cmp) { return readStringUntil(term) == cmp; }
-	bool cmpUntil(char term, char cmp) { return readStringUntil(term)[0] == cmp; }
+	bool cmpUntil(char term, StringRom cmp);// { return readStringUntil(term) == cmp; }
+	bool cmpUntil(char term, const String& cmp);// { return readStringUntil(term) == cmp; }
+	bool cmpUntil(char term, char cmp);// { return readStringUntil(term)[0] == cmp; }
 
 };
 

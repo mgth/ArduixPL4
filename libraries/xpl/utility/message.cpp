@@ -23,19 +23,64 @@
 */
 
 #include "message.h"
-#include "xpl.h"
+#include "options.h"
+#include "hbeat.h"
+#include <avr/pgmspace.h>
+#include <avr/eeprom.h>
 
- size_t Message::printTo(Print& p) const
+size_t printCloseTo(Print& p)
+{
+	return printlnTo(p, '}');
+}
+size_t printOpenTo(Print& p)
+{
+	return printlnTo(p, '{');
+}
+
+class HeaderSection : public Printable
+{
+	String _target;
+public:
+	HeaderSection(String target) :_target(target){}
+	size_t printTo(Print&p) const
 	{
 		return
-			p.print("xpl-") +
-			p.print(_msgType) +
-			p.print("\n{\nhop=1\n") +
-			printKeyTo(p,S(source),xPL.Source()) +
-			printKeyTo(p, S(target),_target) +
-			p.print("}\n") +
-			p.print(_schClass) + p.print('.') + p.print(_schType) +
-			p.print("\n{\n") +
-			_content.printTo(p) +
-			p.print("}\n");
+			printKeyTo(p, F("hop"), 1) +
+			printlnTo(p, F("source"), '=') + printlnTo(p, xPL::vendor(), '-') + printlnTo(p, xPL::device(), '.') + printlnTo(p, Hbeat::newconf) +
+			printKeyTo(p, F("target"), _target);
 	}
+};
+
+class Section : public Printable
+{
+	StringRom _left;
+	StringRom _right;
+	const Printable& _content;
+public:
+	Section(StringRom left, StringRom right, const Printable& content) :_left(left),_right(right),_content(content){}
+	//Section(const Printable& content) :_content(content){}
+	size_t printTo(Print& p) const {
+		return
+			printKeyTo(p, _left, _right, _left==F("xpl")?'-':'.') +
+			printOpenTo(p) +
+			p.print(_content) +
+			printCloseTo(p);
+	}
+};
+
+size_t printSectionTo(Print& p, StringRom left, StringRom right, const Printable& content)
+{
+	return
+		printKeyTo(p, left, right, left == F("xpl") ? '-' : '.') +
+		printOpenTo(p) +
+		p.print(content) +
+		printCloseTo(p);
+}
+
+size_t Message::printTo(Print& p) const
+{
+	
+	return
+		printSectionTo(p,F("xpl"), _header.msgType(), HeaderSection(_target)) +
+		printSectionTo(p,_header.schClass(), _header.schType(), _content);
+}

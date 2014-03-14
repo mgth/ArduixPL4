@@ -64,3 +64,6 @@ ETHERNET OPTIONS
 
 #define PS2_CLK_PIN 6
 #define PS2_DATA_PIN 5
+
+// xPL device configurable (1534 octets)
+#define XPL_CONFIGURE

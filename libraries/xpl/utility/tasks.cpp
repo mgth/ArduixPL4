@@ -22,24 +22,45 @@
 	  http://www.mgth.fr
 */
 #include "tasks.h"
-#include "defines.h"
 
-TasksClass Tasks;
 
-void TasksClass::reg(Task& t) { add(&t); }
 
-void TasksClass::begin() //180
+// run next task in the queue
+void Task::loop()
 {
-	for (Iterator<Task> iTask = first(); iTask; ++iTask)
+	if (first())
 	{
-		iTask->begin();
+		Task& task = *first();
+
+		if (task.compare(millis())<0)
+		{
+			//detach task before execution
+			task.unlink();
+			//actual task execution
+			task.run();
+		}
 	}
 }
 
-void TasksClass::loop()
+// returns scheduled execution time
+void Task::trigTask(time_t delay)
 {
-	for (Iterator<Task> iTask = List<Task>::first(); iTask; ++iTask)
-	{
-		iTask->loop();
-	}
+	_dueTime = millis() + delay;
+	relocate(&first());
 }
+
+// returns scheduled position against t
+int Task::compare(time_t t) const
+{
+	time_t diff = _dueTime - t;
+
+	if (diff > LONG_MAX) return -1;
+	return diff>0;
+}
+
+//for Task to be sortable
+int Task::compare(const Task& task) const
+{
+	return compare(task.dueTime());
+}
+

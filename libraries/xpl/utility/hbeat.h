@@ -23,42 +23,23 @@
 */
 #ifndef HBEAT_H
 #define HBEAT_H
+#include <xpl.h>
+#include "options.h"
 
-#include "tasks.h"
-#include "listeners.h"
-#include "message.h"
-
-class HbeatRequest : public MessageParser
+class NewconfOption : public OptionString
 {
 public:
-	static StringRom schClass() { return S(hbeat); }
-	static StringRom schType() { return S(request); }
-	bool parse();
-
+	NewconfOption() : OptionString(7, cs_reconf, F("newconf"), 16, F("default")){}
+	void parse(const String& value);
 };
 
-class HbeatContent : public Printable
+class Hbeat
 {
-	virtual size_t printTo(Print& p) const;
-};
-
-class HbeatTask : public Task
-{
-	uint32_t _interval;
-	unsigned long _lastHbeatTime;
-	bool _trigHbeat;
-	bool _configured;
-
 public:
-	static HbeatTask Task;
-
-	bool trig() { return _trigHbeat = true; }
-
-	virtual bool begin();
-
-	virtual void loop();
-
-	uint16_t intervalMinutes() const { return _interval / 60000; }
+	static OptionT<int> interval;
+	static OptionString newconf;
+	static String instance(){ return newconf; }
+	static String source() { return String(xPL::vendor()) + "-" + String(xPL::device()) + "." + instance(); }
 };
 
 #endif
