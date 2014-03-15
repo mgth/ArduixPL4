@@ -1,14 +1,37 @@
-#ifndef OneWire_h
-#define OneWire_h
+/*
+  ArduHA - ArduixPL - xPL library for Arduino(tm)
+  Copyright (c) 2012/2014 Mathieu GRENET.  All right reserved.
 
+  This file is part of ArduHA / ArduixPL.
+
+    ArduixPL is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    ArduixPL is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with ArduixPL.  If not, see <http://www.gnu.org/licenses/>.
+
+	  Modified 2014-3-14 by Mathieu GRENET 
+	  mailto:mathieu@mgth.fr
+	  http://www.mgth.fr
+*/
+#
+/*
+Largely derived from OneWire lib from Jim Studt / Paul Stoffregen / Robin James
+	http://playground.arduino.cc/Learning/OneWire#.UyNfhFftt8E
+	http://www.pjrc.com/teensy/td_libs_OneWire.html
+*/
+
+#ifndef HA_1WIRE_h
+#define HA_1WIRE_h
+#include <ArduHA.h>
 #include <inttypes.h>
-
-#if ARDUINO >= 100
-#include "Arduino.h"       // for delayMicroseconds, digitalPinToBitMask, etc
-#else
-#include "WProgram.h"      // for delayMicroseconds
-#include "pins_arduino.h"  // for digitalPinToBitMask, etc
-#endif
 
 // Platform specific I/O definitions
 #if defined(__AVR__)

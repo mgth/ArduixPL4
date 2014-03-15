@@ -1,5 +1,6 @@
 #include <ArduHA.h>
 #include "ha_DS18x20.h"
+#include "ha_DHT.h"
 
 #include <xpl.h>
 #include <xpl_ENC28J60.h>
@@ -8,6 +9,7 @@
 
 xPL_ENC28J60Adapter adapter;
 HA_DS18x20_GlobalTask tempTask(60000);
+HA_SensorDHT dht(8,22);
 
 _SETUP()
 {
@@ -25,6 +27,9 @@ _SETUP()
 //		if (i == 0) s->addFilter(new OutputFilterSerial);
 //		i++;
 	}
+
+	dht.temperature().addFilter(new xPL_Sensor<int, 128>(F("dht_t"), F("temp"), F("c")));
+	dht.humidity().addFilter(new xPL_Sensor<int, 128>(F("dht_h"), F("humidity"), F("%")));
 
 	DBG_MEM(F("loop"));
 	//int a;
