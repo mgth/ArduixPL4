@@ -28,6 +28,7 @@
 
 // macro to iterate all members of a list
 #define foreach(cls,obj) for(cls* obj=LinkedList<cls>::first();obj;obj=obj->LinkedList<cls>::next())
+#define foreachfrom(cls,obj,from) for(cls* obj=from;obj;obj=obj->LinkedList<cls>::next())
 // macro to iterate pointers of the linked list
 #define foreachlnk(cls,lnk) for (cls** lnk = &LinkedList<cls>::_first; *lnk; lnk = &(*lnk)->LinkedList<cls>::_next)
 

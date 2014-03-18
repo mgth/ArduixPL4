@@ -27,24 +27,35 @@
 #include "limits.h"
 #include "linkedlist.h"
 
-class Filter:public LinkedList<Filter>
+template <typename T>
+class Filter :public LinkedList< Filter<T> >
 {
 public:
-	virtual void input(double value) { output(value); }
-	virtual void input(long value) { output(value); }
-	virtual void input(int value) { output(value); }
-	void addFilter(Filter* f) { f->link(last()); }
+	virtual void input(const T& value) = 0;
 
-protected:
-	template<typename TOut> 
-	void output(TOut value) const {
-		if (_next) _next->input(value);
+};
+
+template <typename T>
+class FilterPin {
+	Filter<T>* _filter = NULL;
+public:
+	// Add a filter to listen to this pin
+	template <typename obj>
+	obj* link(obj* filter) { filter->Filter<T>::link(_filter); return filter; }
+
+	// write information to all listening filters on this pin
+	bool write(const T& value)
+	{
+		foreachfrom(Filter<T>, f, _filter)
+		{
+			f->input(value);
+		}
 	}
 };
 
 #include "float.h"
 template<typename T,int _div=1>
-class KalmanFilter : public Filter
+class KalmanFilter : public Filter<T>
 {
 	T _ratio;
 	T _value;
@@ -58,6 +69,8 @@ public:
 		_value = initValue(ratio);
 	}
 
+	FilterPin<T> out;
+
 	void input(T in)
 	{
 		if (_value == initValue(_ratio))
@@ -65,39 +78,48 @@ public:
 		
 		_value += (in - _value) * _ratio / (T)_div;
 
-		output(_value);
+		out.write(_value);
 	}
 };
 
-template<typename T,int _div>
-class Calibration2ndOrder : public Filter {
-	T _ax2;
-	T _bx;
-	T _c;
+#define roundedShift(v,n) ((v >> (n - 1)) & (v >> n))
+
+
+class Calibration2ndOrder_Shifted : public Filter<int>
+{
+	int _inv_a;
+	int _inv_b;
+	int _nc;
+	byte _shift;
+public:
+
+	FilterPin<int> out;
+
+	// Will return ( ax² + (1+b)x + c ) << shift
+	// With :
+	// inv_a = 1/a
+	// inv_b = 1/b
+	// nc = c << shift
+	Calibration2ndOrder_Shifted(int inv_a, int inv_b, int nc, byte shift=7) :_inv_a(inv_a), _inv_b(inv_b), _nc(nc), _shift(shift){}
+
+	void input(const int& nx);
+};
+
+class Calibration2ndOrder : public Filter<double> {
+	double _ax2;
+	double _bx;
+	double _c;
 
 public:
-	Calibration2ndOrder(T ax2, T bx, T c):_ax2(ax2),_bx(bx),_c(c) {}
+	Calibration2ndOrder(double ax2, double bx, double c) :_ax2(ax2), _bx(bx), _c(c) {}
 
-	T& ax2() { return _ax2; }
-	T& bx() { return _bx; }
-	T& c() { return _c; }
-	T& ax2(T v) { return _ax2 = v; }
-	T& bx(T v) { return _bx = v; }
-	T& c(T v) { return _c = v; }
+	FilterPin<double> out;
 
-	//void input(double value)
-	//{
-	//	value *= _bx + value * _ax2;
-	//	value += _c;
-	//	output(value);
-	//}
-
-	void input(T value)
+	void input(double value)
 	{
-		long v = (long)value * (_bx + ((long)value * _ax2)/_div);
-		v /= _div;
-		v += _c;
-		output((int)v);
+		value *= _bx + value * _ax2;
+		value += _c;
+		out.write(value);
 	}
 };
 template<typename Tin, typename Tout>
@@ -128,7 +150,7 @@ class LutElement
 };
 
 template<typename Tin, typename Tout>
-class CalibrationLUT : public Filter {
+class CalibrationLUT : public Filter<Tin> {
 	LutElement<Tin,Tout>* _lut;
 
 	void input(Tin in) { output(_lut->convert(in)); }
@@ -136,7 +158,14 @@ class CalibrationLUT : public Filter {
 };
 
 template<typename T>
-class ThresholdFilter : public Filter {
+class ThresholdFilter : public Filter<T> {
+public:
+	void setThreshold(T t, long tt = 0) { _threshold = t; _timeThreshold = tt; }
+	ThresholdFilter(T t, long tt = 0) :_reset(true) { setThreshold(t, tt); }
+
+	FilterPin<T> out;
+
+private:
 	T _publicValue;
 	time_t _publicTime;
 
@@ -145,7 +174,7 @@ class ThresholdFilter : public Filter {
 
 	bool _reset;
 
-	void input(T value)
+	void input(const T& value)
 	{
 		T threshold = _threshold;
 		if (!_reset && _timeThreshold > 0)
@@ -157,17 +186,14 @@ class ThresholdFilter : public Filter {
 		if (_reset || abs(value - _publicValue) >= threshold)
 		{
 			_publicTime = millis();
-			output(_publicValue = value);
+			out.write(_publicValue = value);
 		}
 		_reset = false;
 	}
-public:
-	void setThreshold(T t, long tt = 0) { _threshold = t; _timeThreshold = tt; }
-	ThresholdFilter(T t, long tt = 0):_reset(true) { setThreshold(t, tt); }
 };
 
 template<typename T>
-class OutputFilterSerial :public Filter
+class OutputFilterSerial :public Filter<T>
 {
 	int _nb;
 public:

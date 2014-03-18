@@ -17,17 +17,26 @@
     You should have received a copy of the GNU General Public License
     along with ArduixPL.  If not, see <http://www.gnu.org/licenses/>.
 
-	  Modified 2014-3-14 by Mathieu GRENET 
+	  Modified 2014-3-18 by Mathieu GRENET 
 	  mailto:mathieu@mgth.fr
 	  http://www.mgth.fr
 */
-#include "sensor.h"
 
-void Calibration2ndOrder_Shifted::input(const int& nx)
+class xPL_Serial : public xPL_Adapter
 {
-	long lnx = (long)nx + (1 << (_shift - 1));
-	int delta = (long)_nc + (((lnx*lnx / _inv_a) + (lnx << _shift) / _inv_b) >> _shift); //132
+public:
 
-	out.write(nx + delta);
-}
+	virtual int available() { return 0; }
+	virtual int read() { return -1; }
+	virtual int peek() { return -1; }
+	virtual void flush() {};
 
+	virtual bool start() {};
+	virtual size_t write(uint8_t c) { Serial.write(c); }
+	virtual bool send() {
+		return true;
+	}
+
+	virtual void begin() {};
+
+};

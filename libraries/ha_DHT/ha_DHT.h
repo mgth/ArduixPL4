@@ -14,8 +14,8 @@
 #define DHTLIB_ERROR_TIMEOUT	-2
 #define DHTLIB_INVALID_VALUE	-999
 class HA_SensorDHT:public Task {
-	int _pin;	byte _type;	Filter _temperature;	Filter _humidity;	Filter _tempDewPoint;	public:	Filter& temperature() { return _temperature; }	Filter& humidity() { return _humidity; }	Filter& tempDewPoint() { return _tempDewPoint; }	int read(uint8_t bits[5]);
-	int read(int& temperature, int& humidity);
-	HA_SensorDHT(uint8_t pin, byte type);	void run();};
+	int _pin;	byte _type;	public:	FilterPin<int> temperature;	FilterPin<int> humidity;	int read(uint8_t bits[5]);
+	int read(int& t, int& h);
+	int readWhile(bool state);	HA_SensorDHT(uint8_t pin, byte type);	void run();};
 #endif
 

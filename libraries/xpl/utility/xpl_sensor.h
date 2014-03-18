@@ -28,24 +28,38 @@
 #include "xpl_device.h"
 #include "xpl_adapter.h"
 
-template<typename T, int _div>
-class xPL_Sensor : public Filter, public xPL_Device
+
+class xPL_SensorBase : public xPL_Device
+{
+protected:
+	xPL_SensorBase(String name, StringRom typ, StringRom units)
+		:xPL_Device(name, typ, units) {}
+
+	void sendCurrent()
+	{
+		xPL_Adapter::send(Message(xPL_MessageHeader(cs_trig, F("sensor"), F("basic")), "*", SensorContent(*this, F("current"))));
+	}
+
+};
+
+template<typename T, int _div=1>
+class xPL_Sensor : public Filter<T> , public xPL_SensorBase
 {
 	T _lastValue;
 public:
 	xPL_Sensor(String name, StringRom typ, StringRom units)
-		:xPL_Device(name, typ, units) {}
+		:xPL_SensorBase(name, typ, units) {}
 
-	void input(T value)
+	void input(const T& value)
 	{
 		_lastValue = value;
-		xPL_Adapter::send(Message(xPL_MessageHeader(cs_trig, F("sensor"), F("basic")), "*", SensorContent(*this, F("current"))));
+		sendCurrent();
 	}
 
-	size_t printValueTo(Print& p, int value) const
+	size_t printValueTo(Print& p, long value) const
 	{
-		int left = value / _div;
-		int right = value - left * _div;
+		long left = value / _div;
+		long right = value - left * _div;
 		size_t n = p.print(left);
 		if (right) n += p.print('.');
 		while (right)
@@ -55,6 +69,10 @@ public:
 			right = value - left * _div;
 		}
 		return n;
+	}
+	size_t printValueTo(Print& p, int value) const
+	{
+		return printValueTo(p, (long)value);
 	}
 
 	size_t printValueTo(Print& p, double v) const

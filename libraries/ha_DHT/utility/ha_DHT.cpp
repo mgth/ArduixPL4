@@ -1,7 +1,7 @@
 /*  ArduHA - ArduixPL - xPL library for Arduino(tm)  Copyright (c) 2012/2014 Mathieu GRENET.  All right reserved.  This file is part of ArduHA / ArduixPL.    ArduixPL is free software: you can redistribute it and/or modify    it under the terms of the GNU General Public License as published by    the Free Software Foundation, either version 3 of the License, or    (at your option) any later version.    ArduixPL is distributed in the hope that it will be useful,    but WITHOUT ANY WARRANTY; without even the implied warranty of    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the    GNU General Public License for more details.    You should have received a copy of the GNU General Public License    along with ArduixPL.  If not, see <http://www.gnu.org/licenses/>.	  Modified 2014-3-14 by Mathieu GRENET 	  mailto:mathieu@mgth.fr	  http://www.mgth.fr*/#
 // Derived from DHT Temperature & Humidity Sensor library for Arduino by Rob Tillaart
 // http://arduino.cc/playground/Main/DHTLib
-#include "../ha_DHT.h"HA_SensorDHT::HA_SensorDHT(uint8_t pin, byte type) :_pin(pin), _type(type){	trigTask();}// dewPoint function NOAA
+#include "../ha_DHT.h"#include "debug.h"#include "util/delay.h"HA_SensorDHT::HA_SensorDHT(uint8_t pin, byte type) :_pin(pin), _type(type){	trigTask();}// dewPoint function NOAA
 // reference: http://wahiduddin.net/calc/density_algorithms.htm 
 /*
 double dewPoint(double celsius, double humidity)
@@ -48,7 +48,7 @@ int HA_SensorDHT::read(int& temperature, int& humidity)
 
 	return DHTLIB_OK;
 }
-void HA_SensorDHT::run(){	int temperature;	int humidity;	int res = read(temperature, humidity);		if (res==DHTLIB_OK)		{			_temperature.input(temperature);			_humidity.input(humidity);			//double hn = _dht.humidity * exp(
+void HA_SensorDHT::run(){	int t;	int h;	int res = read(t, h);		if (res==DHTLIB_OK)		{			temperature.write(t);			humidity.write(h);			//double hn = _dht.humidity * exp(
 			//								4892.32623 *
 			//								( 1/(273.15 + _tempNorm) - 1/(273.15 + _dht.temperature) )
 			//							);
@@ -59,7 +59,7 @@ int HA_SensorDHT::read(int& temperature, int& humidity)
 // 84 MHz => 52500
 // 100MHz => 62500
 #define TIMEOUT (F_CPU/1600)
-int HA_SensorDHT::read(uint8_t bits[5])
+int HA_SensorDHT::readWhile(bool state){	for (unsigned int c = TIMEOUT; c; --c)	if (digitalRead(_pin) != state) return DHTLIB_OK;	return DHTLIB_ERROR_TIMEOUT;}int HA_SensorDHT::read(uint8_t bits[5])
 {
 
 	// INIT BUFFERVAR TO RECEIVE DATA
@@ -72,36 +72,28 @@ int HA_SensorDHT::read(int& temperature, int& humidity)
 	// REQUEST SAMPLE
 	pinMode(_pin, OUTPUT);
 	digitalWrite(_pin, LOW);
-	delay(20);
+	_delay_ms(20);
 	digitalWrite(_pin, HIGH);
-	delayMicroseconds(40);
+	_delay_us(40);
 	pinMode(_pin, INPUT);
 
 	// GET ACKNOWLEDGE or TIMEOUT
-	unsigned int loopCnt = TIMEOUT;
-	while (digitalRead(_pin) == LOW)
-	if (--loopCnt == 0) return DHTLIB_ERROR_TIMEOUT;
+	if (readWhile(LOW) == DHTLIB_ERROR_TIMEOUT) return DHTLIB_ERROR_TIMEOUT;
 
-	loopCnt = TIMEOUT;
-	while (digitalRead(_pin) == HIGH)
-	if (--loopCnt == 0) return DHTLIB_ERROR_TIMEOUT;
+	if (readWhile(HIGH) == DHTLIB_ERROR_TIMEOUT) return DHTLIB_ERROR_TIMEOUT;
 
 	// READ THE OUTPUT - 40 BITS => 5 BYTES
-	for (uint8_t i = 0; i<40; i++)
+	while (idx<5)
 	{
-		loopCnt = TIMEOUT;
-		while (digitalRead(_pin) == LOW)
-		if (--loopCnt == 0) return DHTLIB_ERROR_TIMEOUT;
+		if (readWhile(LOW) == DHTLIB_ERROR_TIMEOUT) return DHTLIB_ERROR_TIMEOUT;
 
 		unsigned long t = micros();
 
-		loopCnt = TIMEOUT;
-		while (digitalRead(_pin) == HIGH)
-		if (--loopCnt == 0) return DHTLIB_ERROR_TIMEOUT;
+		if (readWhile(HIGH) == DHTLIB_ERROR_TIMEOUT) return DHTLIB_ERROR_TIMEOUT;
 
 		if ((micros() - t) > 40) bits[idx] |= mask;
 		mask >>= 1;
-		if (mask == 0)   // next byte?
+		if (!mask)   // next byte?
 		{
 			mask = 128;
 			idx++;

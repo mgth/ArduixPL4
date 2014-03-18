@@ -593,7 +593,6 @@ void xPL_ENC28J60Adapter::begin()
 
 	if (!init)
 	{
-		DBG(F("<begin ENC28J60>"));
 		initialize();
 		init = true;
 	}
