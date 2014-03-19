@@ -42,7 +42,7 @@ protected:
 
 };
 
-template<typename T, int _div=1>
+template<typename T, int _div=1, byte _dec=2>
 class xPL_Sensor : public Filter<T> , public xPL_SensorBase
 {
 	T _lastValue;
@@ -68,11 +68,13 @@ public:
 		long right = value - left * _div;
 		n = p.print(left);
 		if (right) n += p.print('.');
-		while (right)
+		byte dec = _dec;
+		while (right && dec)
 		{
 			value = right * 10;
 			n += p.print(left = value / _div);
 			right = value - left * _div;
+			dec--;
 		}
 		return n;
 	}

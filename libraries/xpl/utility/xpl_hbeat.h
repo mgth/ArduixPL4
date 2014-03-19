@@ -38,7 +38,7 @@ class xPL_Hbeat
 public:
 	static OptionT<int> interval;
 	static OptionString newconf;
-	static String instance(){ return newconf; }
+	static String instance(){ return newconf.; }
 	static String source() { return String(xPL::vendor()) + "-" + String(xPL::device()) + "." + instance(); }
 };
 

@@ -35,10 +35,10 @@ int HA_SensorDHT::read(int& temp, int& hum)
 	hum = h; 
 	temp = t; 
 	// TEST CHECKSUM
-	uint8_t sum = 0: //bits[0] + bits[1] + bits[2] + bits[3] - bits[4];
-	for (byte i = 0; i < 4; i++) sum += bits[i];
+	uint8_t sum = bits[0] + bits[1] + bits[2] + bits[3] ;
+	//for (byte i = 0; i < 4; i++) sum += bits[i];
 
-	if (sum) return DHTLIB_ERROR_CHECKSUM;
+	if (sum != bits[4]) return DHTLIB_ERROR_CHECKSUM;
 
 	return DHTLIB_OK;
 }
