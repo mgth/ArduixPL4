@@ -9,6 +9,8 @@
 #include "Wire.h"
 //#include "utility/BMP085.h"typedef enum{	UltraLow,	Standard,	High,	UltraHigh} BMP085_res_t;class HA_BMP085:public Task {
 int _pin;byte _type;uint8_t _oversampling;int16_t _calibration[11];private:
+	void request(uint8_t a, int size);
+	void readBytes(uint8_t a, void* ret, int size);
 	uint8_t read8(uint8_t addr);
 	uint16_t read16(uint8_t addr);
 	void write8(uint8_t addr, uint8_t data);

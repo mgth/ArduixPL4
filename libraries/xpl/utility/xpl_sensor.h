@@ -58,9 +58,15 @@ public:
 
 	size_t printValueTo(Print& p, long value) const
 	{
+		size_t n = 0;
+		if (value < 0)
+		{
+			n += p.print('-');
+			value = -value;
+		}
 		long left = value / _div;
 		long right = value - left * _div;
-		size_t n = p.print(left);
+		n = p.print(left);
 		if (right) n += p.print('.');
 		while (right)
 		{

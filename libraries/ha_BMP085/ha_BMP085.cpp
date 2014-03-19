@@ -131,54 +131,45 @@ long HA_BMP085::readPressure() {
 	return p;
 }
 void HA_BMP085::run(){		readPressure();		trigTask();}/*********************************************************************/
+void HA_BMP085::request(uint8_t a, int size) {
+
+	Wire.beginTransmission(BMP085_I2CADDR);
+	Wire.write(a);
+	Wire.endTransmission();
+
+	Wire.requestFrom(BMP085_I2CADDR, size);
+}
+
+void HA_BMP085::readBytes(uint8_t a, void* ret, int size) {
+
+	request(a, size);
+
+	if (size > 0)
+	{
+		for (int i = 0; i < size; i++)
+			*((uint8_t*)ret + i) = Wire.read();
+	}
+	else
+	{
+		for (int i = -size-1; i>=0; i--)
+			*((uint8_t*)ret + i) = Wire.read(); 
+	}
+
+	Wire.endTransmission();
+}
 
 uint8_t HA_BMP085::read8(uint8_t a) {
-	uint8_t ret;
-
-	Wire.beginTransmission(BMP085_I2CADDR); // start transmission to device 
-#if (ARDUINO >= 100)
-	Wire.write(a); // sends register address to read from
-#else
-	Wire.send(a); // sends register address to read from
-#endif
-	Wire.endTransmission(); // end transmission
-
-	Wire.beginTransmission(BMP085_I2CADDR); // start transmission to device 
-	Wire.requestFrom(BMP085_I2CADDR, 1);// send data n-bytes read
-#if (ARDUINO >= 100)
-	ret = Wire.read(); // receive DATA
-#else
-	ret = Wire.receive(); // receive DATA
-#endif
-	Wire.endTransmission(); // end transmission
-
+	request(a, 1);
+	uint8_t ret = Wire.read();
+	Wire.endTransmission();
 	return ret;
 }
 
 uint16_t HA_BMP085::read16(uint8_t a) {
-	uint16_t ret;
-
-	Wire.beginTransmission(BMP085_I2CADDR); // start transmission to device 
-#if (ARDUINO >= 100)
-	Wire.write(a); // sends register address to read from
-#else
-	Wire.send(a); // sends register address to read from
-#endif
-	Wire.endTransmission(); // end transmission
-
-	Wire.beginTransmission(BMP085_I2CADDR); // start transmission to device 
-	Wire.requestFrom(BMP085_I2CADDR, 2);// send data n-bytes read
-#if (ARDUINO >= 100)
-	ret = Wire.read(); // receive DATA
-	ret <<= 8;
-	ret |= Wire.read(); // receive DATA
-#else
-	ret = Wire.receive(); // receive DATA
-	ret <<= 8;
-	ret |= Wire.receive(); // receive DATA
-#endif
-	Wire.endTransmission(); // end transmission
-
+	request(a, 2);
+	uint16_t ret = (uint16_t)Wire.read() << 8;
+	ret |= Wire.read();
+	Wire.endTransmission();
 	return ret;
 }
 

@@ -17,34 +17,28 @@ double dewPoint(double celsius, double humidity)
         return (241.88 * T) / (17.558 - T);
 }
 */
-int HA_SensorDHT::read(int& temperature, int& humidity)
+int HA_SensorDHT::read(int& temp, int& hum)
 {
 	byte bits[5];
 
 	// READ VALUES
 	int rv = read(bits);
-	if (rv != DHTLIB_OK)
-	{
-		humidity = DHTLIB_INVALID_VALUE; // invalid value, or is NaN prefered?
-		temperature = DHTLIB_INVALID_VALUE; // invalid value
-		return rv;
-	}
+	if (rv != DHTLIB_OK) return rv;
 
 	// CONVERT AND STORE
-	long h = word(bits[0], bits[1]) << 7;  // bits[1] == 0;
-	long t = word(bits[2] & 0x7F, bits[3]) << 7;  // bits[3] == 0;
+	long h = (long)word(bits[0], bits[1]) << 7;  
+	long t = (long)word(bits[2] & 0x7F, bits[3]) << 7;
 
-	if (_type > 11)
-	{
-		h /= 10;
-		t /= 10;
-		if (bits[2] & 0x80) t = -t;
-	}
-	humidity = h; // invalid value, or is NaN prefered?
-	temperature = t; // invalid value
+	if (_type > 11) { h /= 10; t /= 10; }
+
+	if (bits[2] & 0x80) t = -t;
+	hum = h; 
+	temp = t; 
 	// TEST CHECKSUM
-	uint8_t sum = bits[0] + bits[1] + bits[2] + bits[3];
-	if (bits[4] != sum) return DHTLIB_ERROR_CHECKSUM;
+	uint8_t sum = 0: //bits[0] + bits[1] + bits[2] + bits[3] - bits[4];
+	for (byte i = 0; i < 4; i++) sum += bits[i];
+
+	if (sum) return DHTLIB_ERROR_CHECKSUM;
 
 	return DHTLIB_OK;
 }
