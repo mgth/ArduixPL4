@@ -28,6 +28,7 @@
 #include "xpl_adapter.h"
 #include "xpl_message.h"
 #include "xpl_parser.h"
+#include "xpl_configure.h"
 
 class xPL_ConfigList : public Task, public Printable
 {
@@ -36,9 +37,9 @@ public:
 
 	size_t printTo(Print& p) const {
 		size_t n = 0;
-		foreach(Option, opt)
+		foreach(xPL_Option, opt)
 		{
-			n += printlnTo(p, opt->optionType(), '=');
+			n += printlnTo(p, opt->type(), '=');
 			n += printlnTo(p, opt->name(), (opt->nb() <= 1) ? '\n' : '['); //10
 			if (opt->nb() > 1) //4
 			{
@@ -62,9 +63,9 @@ public:
 	xPL_ConfigCurrent() :Task(0){}
 	size_t printTo(Print& p) const {
 		size_t n = 0;
-		foreach(Option, opt)
+		foreach(xPL_Option, opt)
 		{
-			n += printKeyTo(p, opt->name(), *opt);
+			n += printKeyTo(p, opt->name(), *((Option*)opt));
 		}
 		return n;
 	}
@@ -114,11 +115,11 @@ public:
 	bool parse(const xPL_KeyValue& kv)
 	{
 		bool result = false;
-		foreach(Option, opt)
+		foreach(xPL_Option, opt)
 		{
 			if (kv.key == opt->name())
 			{
-				opt->parse(kv.value);
+				((Option*)opt)->parse(kv.value);
 				result = true;
 			}
 		}

@@ -25,19 +25,20 @@
 #define XPL_HBEAT_H
 #include <xpl.h>
 #include "utility/option.h"
+#include "utility/xpl_configure.h"
 
-class xPL_NewconfOption : public OptionString
+class xPL_NewconfOption : public xPL_OptionString
 {
 public:
-	xPL_NewconfOption() : OptionString(7, cs_reconf, F("newconf"), 16, F("default")){}
+	xPL_NewconfOption() : xPL_OptionString(7, 16, F("default"), cs_reconf, F("newconf")){}
 	void parse(const String& value);
 };
 
 class xPL_Hbeat
 {
 public:
-	static OptionT<int> interval;
-	static OptionString newconf;
+	static xPL_OptionT<int> interval;
+	static xPL_OptionString newconf;
 	static String instance(){ return newconf; }
 	static String source() { return String(xPL::vendor()) + "-" + String(xPL::device()) + "." + instance(); }
 };

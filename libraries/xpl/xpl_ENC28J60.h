@@ -22,8 +22,8 @@
 	  http://www.mgth.fr
 */
 
-#ifndef ADAPTERW5100_H
-#define ADAPTERW5100_H
+#ifndef XPL_ENC28J60_H
+#define XPL_ENC28J60_H
 #include <xpl.h>
 #include "utility/task.h"
 #include "utility/xpl_adapter.h"
@@ -32,7 +32,7 @@
 class OptionMacAddress : public Option
 {
 public:
-	OptionMacAddress() :Option(0, cs_option, F("mac_address")) {
+	OptionMacAddress() :Option(0) {
 		if (!checkCrc())set();
 	}
 	byte size() const { return 6; }

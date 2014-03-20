@@ -30,19 +30,13 @@
 class Option;
 
 
-class Option : public AutoList<Option>, public Printable
+class Option : public Printable
 {
-	byte _nb;
-	byte _optionType;
-	StringRom _name;
 	uint8_t* _addr;
-public:
-	byte nb() const { return _nb; }
-	byte optionType() const { return _optionType; }
-	StringRom name() const { return _name; }
 
-	Option(int addr, byte optionType, StringRom name)
-		:_addr((uint8_t*)addr), _optionType(optionType), _name(name){}
+public:
+	Option(int addr)
+		:_addr((uint8_t*)addr){}
 		
 	static bool configured;
 
@@ -93,10 +87,6 @@ public:
 	}
 
 
-	//size_t printTo(Print&p, int i) const { return p.print(i); }
-	//size_t printTo(Print&p, float f) const { return p.print(f); }
-	//size_t printTo(Print&p, const String& s) const { return p.print(s); }
-	//size_t printTo(Print&p, byte*) const { return 0; }
 
 
 	/**************************************************
@@ -127,39 +117,39 @@ public:
 	}
 };
 
-template <typename _type>
+template <typename T>
 class OptionT : public Option
 {
 
 public:
-	OptionT(int addr, byte optionType, StringRom name, _type def)
-		:Option(addr, optionType, name) {
+	OptionT(int addr, T def)
+		:Option(addr) {
 		if (reset() || !checkCrc()) storeObj((char*)&def);
 	}
 
-	byte size() const { return sizeof(_type); }
+	byte size() const { return sizeof(T); }
 
-	operator _type() const
+	operator T() const
 	{ 
-		_type obj;
+		T obj;
 		if (read((char*)&obj)) return obj;
 		corrupted();
 	}
 
 	void parse(const String& s)  {
-		_type obj;
+		T obj;
 		parseObj(s, obj);
 		storeObj((char*)&obj);
 	}
 
-	_type operator=(_type obj)  {
+	T operator=(T obj)  {
 		storeObj((char*)&obj);
 		return obj;
 	}
 
 	size_t printTo(Print& p) const
 	{
-		return p.print((_type)*this);
+		return p.print((T)*this);
 	}
 };
 
@@ -167,8 +157,8 @@ class OptionString : public Option
 {
 	byte _size;
 public:
-	OptionString(int addr, byte optionType, StringRom name, byte size, StringRom def)
-		:_size(size),Option(addr, optionType, name) {
+	OptionString(int addr, byte size, StringRom def)
+		:_size(size),Option(addr) {
 		if (!checkCrc() || reset()) storeObj(def);
 	}
 

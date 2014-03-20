@@ -30,7 +30,7 @@
 
 bool Option::configured = true;
 
-//EepromCell::operator byte() const { return eeprom_read_byte(_addr); }
+//retrieve byte at option position
 byte Option::get(byte pos) const { return eeprom_read_byte(addr(pos)); }
 void Option::set(byte pos, byte b) const
 {
@@ -40,6 +40,8 @@ void Option::set(byte pos, byte b) const
 	}
 }
 
+// store next byte to eeprom
+// returns true if not finished otherwise false
 bool OptionWriter::store(byte b)
 {
 
@@ -49,13 +51,15 @@ bool OptionWriter::store(byte b)
 	_crc_ibutton_update(_crc, b); // update crc with new value;
 
 	if (_pos < _option.size()) return true; //object writing not finisned
-//	DBGLN("byte:", _crc)
 
 	_option.set(_pos,_crc); // object writing finished, store Crc.
 
 	return false;
 }
 
+// read next byte from eeprom
+// returns -1 if finished ok
+// return -2 if checksum is bad
 int OptionWriter::read()
 {
 
@@ -71,17 +75,6 @@ int OptionWriter::read()
 
 }
 
-//byte Option::operator[](byte pos) const {
-//	return EepromCell(addr(pos));
-////	return eeprom_read_byte(addr(pos));
-//}
-
-//void Option::write(byte pos,char c) const
-//{
-//	if ((*this)[pos] == c) return;
-//	eeprom_write_byte((uint8_t*)addr(pos), c);
-//}
-
 // Store binary object to eeprom
 void Option::storeObj(void* obj) //108
 {
@@ -90,18 +83,15 @@ void Option::storeObj(void* obj) //108
 	while (opt.store(*addr++));
 }
 
-void Option::storeObj(const String& s) //138
+// store a string to eeprom
+void Option::storeObj(const String& s) 
 {
 	OptionWriter opt(*this);
 	while ( opt.store((opt.pos() < s.length()) ? s.charAt(opt.pos()) : 0) );
 }
 
-char charAt_P(StringRom s, int pos)
-{
-
-}
-
-void Option::storeObj(StringRom s) //138
+//store programme space sting 
+void Option::storeObj(StringRom s) 
 {
 	OptionWriter opt(*this);
 	while (opt.store(
@@ -111,6 +101,7 @@ void Option::storeObj(StringRom s) //138
 			));
 }
 
+//return stored option as a string
  OptionString::operator String()
 {
 	String s = "";
