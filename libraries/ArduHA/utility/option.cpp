@@ -31,44 +31,37 @@
 bool Option::configured = true;
 
 //EepromCell::operator byte() const { return eeprom_read_byte(_addr); }
-byte EepromCell::get() const { return eeprom_read_byte(_addr); }
-void EepromCell::set(byte b)
+byte Option::get(byte pos) const { return eeprom_read_byte(addr(pos)); }
+void Option::set(byte pos, byte b) const
 {
-	if (b != get())
+	if (b != get(pos))
 	{
-		eeprom_write_byte(_addr, b);
+		eeprom_write_byte(addr(pos), b);
 	}
 }
 
 bool OptionWriter::store(byte b)
 {
 
-	if (_cell.addr() >= _option.addrEnd()) return false; // secure to not overflow
-	_cell.set(b);
-	_cell++;
+	if (_pos >= _option.size()) return false; // secure to not overflow
+	_option.set(_pos, b);
+	_pos++;
 	_crc_ibutton_update(_crc, b); // update crc with new value;
 
-	if (_cell.addr() < _option.addrEnd()) return true; //object writing not finisned
+	if (_pos < _option.size()) return true; //object writing not finisned
 //	DBGLN("byte:", _crc)
 
-	_cell.set(_crc); // object writing finished, store Crc.
+	_option.set(_pos,_crc); // object writing finished, store Crc.
+
 	return false;
 }
 
 int OptionWriter::read()
 {
-	//byte b = _option[_pos++];
-	//if (_pos < _option.size())
-	//{
-	//	_crc_ibutton_update(_crc, b);
-	//	return b;
-	//}
-	//if ( b == _crc ) return -1;
-	//return -2;
 
-	byte b = _cell.get();
-	_cell++;
-	if (_cell.addr() <= _option.addrEnd())
+	byte b = _option.get(_pos++);
+	
+	if (_pos <= _option.size())
 	{
 		_crc_ibutton_update(_crc, b);
 		return b;
@@ -89,10 +82,12 @@ int OptionWriter::read()
 //	eeprom_write_byte((uint8_t*)addr(pos), c);
 //}
 
-void Option::storeObj(char* obj) //108
+// Store binary object to eeprom
+void Option::storeObj(void* obj) //108
 {
+	char* addr = (char*)obj;
 	OptionWriter opt(*this);
-	while (opt.store(*obj++));
+	while (opt.store(*addr++));
 }
 
 void Option::storeObj(const String& s) //138
@@ -101,10 +96,19 @@ void Option::storeObj(const String& s) //138
 	while ( opt.store((opt.pos() < s.length()) ? s.charAt(opt.pos()) : 0) );
 }
 
+char charAt_P(StringRom s, int pos)
+{
+
+}
+
 void Option::storeObj(StringRom s) //138
 {
 	OptionWriter opt(*this);
-	while (opt.store((opt.pos() < strlen_P((const char*)s)) ? ((const char *)s)[opt.pos()] : 0));
+	while (opt.store(
+		(opt.pos() < strlen_P((const char*)s))?
+		(pgm_read_byte((const char *)s+opt.pos()))
+			: 0
+			));
 }
 
  OptionString::operator String()
@@ -112,7 +116,7 @@ void Option::storeObj(StringRom s) //138
 	String s = "";
 	int c;
 	OptionWriter opt(*this);
-	while ( (c=opt.read()) > -1 ) { s += (char)c; }
+	while ( (c=opt.read()) > -1 ) { if (c) s += (char)c; }
 
 	if (c==-1) return s;
 	corrupted();

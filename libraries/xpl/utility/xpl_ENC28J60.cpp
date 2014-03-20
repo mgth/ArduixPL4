@@ -491,7 +491,7 @@ void writeHeader()
 
 // Ethernet
 	printBytes('\xFF',6);       // broadcast mac
-	for (byte i = 0; i<6; i++) printByte(_mac[i].get());
+	for (byte i = 0; i<6; i++) printByte(_mac.get(i));
 	printWord(0x800);
 
 // IP
@@ -565,12 +565,12 @@ void initialize() {
 	writeRegByte(MABBIPG, 0x12);
 	writeReg(MAMXFL, MAX_FRAMELEN);
 
-	writeRegByte(MAADR5, _mac[0].get());
-	writeRegByte(MAADR4, _mac[1].get());
-	writeRegByte(MAADR3, _mac[2].get());
-	writeRegByte(MAADR2, _mac[3].get());
-	writeRegByte(MAADR1, _mac[4].get());
-	writeRegByte(MAADR0, _mac[5].get());
+	writeRegByte(MAADR5, _mac.get(0));
+	writeRegByte(MAADR4, _mac.get(1));
+	writeRegByte(MAADR3, _mac.get(2));
+	writeRegByte(MAADR2, _mac.get(3));
+	writeRegByte(MAADR1, _mac.get(4));
+	writeRegByte(MAADR0, _mac.get(5));
 	writePhy(PHCON2, PHCON2_HDLDIS);
 	SetBank(ECON1);
 	writeOp(ENC28J60_BIT_FIELD_SET, EIE, EIE_INTIE | EIE_PKTIE);

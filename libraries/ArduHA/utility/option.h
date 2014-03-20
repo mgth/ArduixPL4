@@ -29,24 +29,6 @@
 #include "debug.h"
 class Option;
 
-class EepromCell
-{
-	uint8_t* _addr;
-	public:
-		EepromCell(uint8_t* addr) :_addr(addr){}
-		//operator byte() const;
-		byte get() const;
-
-		void set(byte b);
-		EepromCell& operator++(int)
-		{
-			EepromCell tmp = *this;
-			_addr++;
-			return tmp;
-		}
-
-		uint8_t* addr() const { return _addr; }
-};
 
 class Option : public AutoList<Option>, public Printable
 {
@@ -63,14 +45,28 @@ public:
 		:_addr((uint8_t*)addr), _optionType(optionType), _name(name){}
 		
 	static bool configured;
+
+	static bool reset() {
+		pinMode(HA_RESET_PIN, INPUT);
+		digitalWrite(HA_RESET_PIN, HIGH); // let it float
+		if (digitalRead(HA_RESET_PIN)) return false;
+		return true;
+	}
+
 	uint8_t*  addr(byte pos) const { return _addr + pos; }
-	uint8_t*  addrEnd() const { return addr(size()); }
+	uint8_t*  addrCrc() const { return addr(size()); }
+	uint8_t*  addrNext() const { return addrCrc()+1; }
 
 	virtual byte size() const = 0;
 
+	byte get(byte pos) const;
+	void set(byte pos, byte b) const;
+
 	//const EepromCell operator[](byte i) const;
-	const EepromCell& operator[](byte pos) { return EepromCell(_addr+pos); }
-	const EepromCell& operator[](byte pos) const { return EepromCell(_addr+pos); }
+	//const EepromCell& operator[](byte pos) { return EepromCell(_addr+pos); }
+	//const EepromCell& operator[](byte pos) const { return EepromCell(_addr+pos); }
+
+
 	bool checkCrc() const;
 
 	// parse : parse string to initialise value
@@ -109,7 +105,7 @@ public:
 
 //	void write(byte pos,char c) const;
 
-	void storeObj(char* obj);
+	void storeObj(void* obj);
 
 	void storeObj(const String& s);
 
@@ -138,7 +134,7 @@ class OptionT : public Option
 public:
 	OptionT(int addr, byte optionType, StringRom name, _type def)
 		:Option(addr, optionType, name) {
-		if (!checkCrc()) storeObj((char*)&def);
+		if (reset() || !checkCrc()) storeObj((char*)&def);
 	}
 
 	byte size() const { return sizeof(_type); }
@@ -173,7 +169,7 @@ class OptionString : public Option
 public:
 	OptionString(int addr, byte optionType, StringRom name, byte size, StringRom def)
 		:_size(size),Option(addr, optionType, name) {
-		if (!checkCrc()) storeObj(def);
+		if (!checkCrc() || reset()) storeObj(def);
 	}
 
 	byte size() const { return _size; }
@@ -188,16 +184,16 @@ public:
 class OptionWriter
 {
 	const Option& _option;
-//	byte _pos;
+	byte _pos;
 	byte _crc;
-	EepromCell _cell;
+	
 public:
-	OptionWriter(const Option& option) :_option(option), _crc(0), _cell(option.addr(0)) {}
+	OptionWriter(const Option& option) :_option(option), _crc(0), _pos(0) {}
 	bool store(byte b);
 	int read();
-	uint8_t* waddr() const { return _cell.addr(); }// _option.addr(_pos);
+	uint8_t* addr() const { return _option.addr(_pos); }
 
-	byte pos() const { return _cell.addr()- _option.addr(0); }
+	byte pos() const { return _pos; }
 };
 
 #endif

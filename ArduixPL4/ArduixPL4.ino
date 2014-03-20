@@ -58,7 +58,8 @@ _SETUP()
 		;
 
 
-//	xPL_Sensor(bmp.pressure, F("bmp_t"), F("temp"), F("c"))
+	DBGLN("opt:", Option::reset());
+
 
 	DBG_MEM(F("loop"));
 	//int a;

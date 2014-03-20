@@ -36,8 +36,8 @@ StringRom s_newconf() { return F("newconf"); }
 StringRom s_default() { return F("default"); }
 
 
-OptionT<int> xPL_Hbeat::interval(24, cs_option, s_interval(), XPL_CONFIG_INTERVAL);
 OptionString xPL_Hbeat::newconf(7, cs_reconf, s_newconf(), 16, s_default());
+OptionT<int> xPL_Hbeat::interval((int)newconf.addrNext(), cs_option, s_interval(), XPL_CONFIG_INTERVAL);
 
 /*
 xPL_Hbeat message content
