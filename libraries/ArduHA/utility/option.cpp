@@ -75,12 +75,13 @@ int OptionWriter::read()
 
 }
 
-// Store binary object to eeprom
-void Option::storeObj(void* obj) //108
+/// <todo>always return true</todo>
+bool Option::storeObj(void* obj) //108
 {
 	char* addr = (char*)obj;
 	OptionWriter opt(*this);
 	while (opt.store(*addr++));
+	return true;
 }
 
 // store a string to eeprom
@@ -90,7 +91,7 @@ void Option::storeObj(const String& s)
 	while ( opt.store((opt.pos() < s.length()) ? s.charAt(opt.pos()) : 0) );
 }
 
-//store programme space sting 
+//store programme space string 
 void Option::storeObj(StringRom s) 
 {
 	OptionWriter opt(*this);
@@ -101,19 +102,6 @@ void Option::storeObj(StringRom s)
 			));
 }
 
-//return stored option as a string
- OptionString::operator String()
-{
-	String s = "";
-	int c;
-	OptionWriter opt(*this);
-	while ( (c=opt.read()) > -1 ) { if (c) s += (char)c; }
-
-	if (c==-1) return s;
-	corrupted();
-	return "";
-}
-
 bool Option::checkCrc() const
 {
 	OptionWriter opt(*this);
@@ -122,24 +110,15 @@ bool Option::checkCrc() const
 	return result == -1;
 }
 
-size_t OptionString::printTo(Print&p) const
+//read eeprom to binary 
+void Option::read(char* obj) const
 {
-	size_t n = 0;
-	int c; 
-	OptionWriter opt(*this);
-	while ( ( c = opt.read() ) > 0) n += p.print((char)c);
-	return n;
-}
-
-bool Option::read(char* obj) const
-{
-
 	OptionWriter opt(*this);
 	int c; 
 	while ( (c=opt.read()) > -1)
 	{
 		*(obj++) = (char)c;
 	}
-	return (c==-1);
+	if (c == -1) 	corrupted();
 }
 

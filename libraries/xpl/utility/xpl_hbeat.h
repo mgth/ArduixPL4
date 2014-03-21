@@ -27,18 +27,18 @@
 #include "utility/option.h"
 #include "utility/xpl_configure.h"
 
-class xPL_NewconfOption : public xPL_OptionString
+class xPL_NewconfOption : public xPL_OptionT<String>
 {
 public:
-	xPL_NewconfOption() : xPL_OptionString(7, 16, F("default"), cs_reconf, F("newconf")){}
-	void parse(const String& value);
+	xPL_NewconfOption() : xPL_OptionT<String>(7, 16, F("default"), cs_reconf, F("newconf")){}
+	bool parse(const String& value);
 };
 
 class xPL_Hbeat
 {
 public:
 	static xPL_OptionT<int> interval;
-	static xPL_OptionString newconf;
+	static xPL_OptionT<String> newconf;
 	static String instance(){ return newconf; }
 	static String source() { return String(xPL::vendor()) + "-" + String(xPL::device()) + "." + instance(); }
 };

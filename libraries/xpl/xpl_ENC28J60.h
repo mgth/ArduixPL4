@@ -42,29 +42,31 @@ public:
 		OptionWriter opt(*this);
 		while (opt.store(opt.pos()?random(256) : (random(256) & B11111110) | B00000010));
 	}
-	void parse(const String& value) {
-		byte cur = 0;
-		OptionWriter opt(*this);
+	bool parse(const String& value) {
+		byte mac[6] = { 0, 0, 0, 0, 0, 0 };
+		byte pos = 0;
+
 		for (byte i = 0; i < value.length(); i++)
 		{
-			byte c = value.charAt(i++);
+			byte c = value.charAt(i);
 
 			if (c >= '0' && c <= '9') c -= '0';
 			else if (c >= 'A' && c <= 'F') c -= 'A' - 10;
 			else if (c >= 'a' && c <= 'f') c -= 'a' - 10;
 			else continue;
 
-			if (opt.pos() && B1)
-			{
-				cur &= c;
-				if (!opt.store(c)) break;
-			}
-			else
-			{
-				cur = c << 4;
-			}
+			if (pos && B1) c = c << 4;
+
+			mac[pos>>1] &= c;
+
+			pos++;
+
 		}
-		while (opt.store(0));
+		if (pos != 6) return false;
+
+		storeObj(mac);
+
+		return true;
 	}
 
 	static size_t printHexTo(Print& p, char c)

@@ -30,24 +30,27 @@
 
 typedef unsigned long time_t;
 
+/// <summary>Base class for task scheduling</summary>
 class Task
 	:public LinkedList<Task>
 {
 	time_t _dueTime;
 
 protected:
-	// returns scheduled position against t
+	/// <returns>scheduled position against t (<0 if before, >0 if after)</returns>
 	int compare(time_t t) const;
 
-	// to be overriden for task execution
+	/// <summary>to be overriden for task execution</summary>
 	virtual void run() = 0;
 
 public:
 
-	// run next task in queue
+	/// <summary>run next task in queue if it's time to</summary>
 	static void loop();
 
 	// schedule next execution at determined delay in ms
+	/// <summary>schedule next execution at determined delay from now</summary>
+	/// <param name="delay">delay in ms</param>
 	void trigTask(time_t delay = 0);
 
 	// returns scheduled execution time

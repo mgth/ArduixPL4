@@ -29,82 +29,103 @@
 #include "debug.h"
 class Option;
 
-
+/// <summary>base class for eeprom storage</summary>
 class Option : public Printable
 {
 	uint8_t* _addr;
-
 public:
 	Option(int addr)
 		:_addr((uint8_t*)addr){}
 		
 	static bool configured;
 
-	static bool reset() {
+	/// <summary>to test reset pin status</summary>
+	/// <returns> true if reset pin is grounded</returns>
+	static bool reset()
+	{
 		pinMode(HA_RESET_PIN, INPUT);
 		digitalWrite(HA_RESET_PIN, HIGH); // let it float
 		if (digitalRead(HA_RESET_PIN)) return false;
 		return true;
 	}
 
-	uint8_t*  addr(byte pos) const { return _addr + pos; }
-	uint8_t*  addrCrc() const { return addr(size()); }
-	uint8_t*  addrNext() const { return addrCrc()+1; }
+	/// <summary>get address of specified index within option</summary>
+	/// <param name="pos">index within option</param>
+	/// <returns>address of the nth byte of the option</returns>
+	uint8_t*  addr(byte pos=0) const { return _addr + pos; }
 
+	/// <summary>get address of crc byte</summary>
+	uint8_t*  addrCrc() const { return addr(size()); Option::reset(); }
+
+	/// <summary>get next address </summary>
+	uint8_t*  addrNext() const { return addrCrc() + 1; }
+
+	/// <summary>get option size in bytes</summary>
 	virtual byte size() const = 0;
 
+	/// <summary>get byte at specified location</summary>
+	/// <param name="pos">index within option</param>
 	byte get(byte pos) const;
+
+	/// <summary>set byte at specified location</summary>
+	/// <param name="pos">index within option</param>
 	void set(byte pos, byte b) const;
 
-	//const EepromCell operator[](byte i) const;
-	//const EepromCell& operator[](byte pos) { return EepromCell(_addr+pos); }
-	//const EepromCell& operator[](byte pos) const { return EepromCell(_addr+pos); }
-
-
+	/// <summary>check crc</summary>
+	/// <returns>true if crc is ok</returns>
 	bool checkCrc() const;
 
-	// parse : parse string to initialise value
-	virtual void parse(const String& s) { };
 
-	static void parseObj(const String& value, byte* obj)
-	{
-		// dummy function to aloow compilation
-	}
+	/**************************************************
+	String Parsing
+	***************************************************/
+public:
+	/// <summary>try to generate value from string</summary>
+	/// <returns>true if conversion is succesful</returns>
+	virtual bool parse(const String& s) { };
 
-	static void parseObj(const String& value, int& obj)
+protected:
+
+	/// <summary>get an int from string value</summary>
+	static bool parseObj(const String& value, int& obj)
 	{
 		obj = value.toInt();
 	}
 
-	static void parseObj(const String& value, float& obj)
+	/// <summary>get a float from string value</summary>
+	static bool parseObj(const String& value, float& obj)
 	{
 		obj = value.toFloat();
 	}
 	
-	static void parseObj(const String& value, String& obj)
+	/// <summary>get a float from string value</summary>
+	static bool parseObj(const String& value, String& obj)
 	{
 		obj = value;
 	}
-
-
 
 
 	/**************************************************
 	EEPROM
 	***************************************************/
 
-//	void write(byte pos,char c) const;
+protected:
+	/// <summary>Store binay object to eeprom</summary>
+	bool storeObj(void* obj);
 
-	void storeObj(void* obj);
-
+	/// <summary>Store String to eeprom</summary>
+	/// <remarq>If exed capacity size, the string is truncated</remarq>
 	void storeObj(const String& s);
 
+	/// <summary>Store program space string to eeprom</summary>
+	/// <remarq>used for default value storage</remarq>
 	void storeObj(StringRom obj);
 
-//	String const getString() const;
+	/// <summary>Read binary object</summary>
+	/// <returns>true if read is succesful and crc is ok</returns>
+	void read(char* obj) const;
 
-	bool read(char* obj) const;
-
+	/// <summary>Fatal function to be called when crc check fail</summary>
 	static bool corrupted()
 	{
 #ifdef DEBUG 
@@ -117,6 +138,27 @@ public:
 	}
 };
 
+/// <summary>Helper to access option raw value and compute CRC</summary>
+class OptionWriter
+{
+	const Option& _option;
+	byte _pos;
+	byte _crc;
+
+public:
+	OptionWriter(const Option& option) :_option(option), _crc(0), _pos(0) {}
+
+	/// <summary>store byte to next position</summary>
+	bool store(byte b);
+
+	/// <summary>read next byte</summary>
+	int read();
+
+	/// <summary>current reader/writer position</summary>
+	byte pos() const { return _pos; }
+};
+
+/// <summary>template </summary>
 template <typename T>
 class OptionT : public Option
 {
@@ -127,63 +169,89 @@ public:
 		if (reset() || !checkCrc()) storeObj((char*)&def);
 	}
 
+	/// <summary>binay size of the option</summary>
 	byte size() const { return sizeof(T); }
 
+	/// <summary>get actual option value</summary>
 	operator T() const
 	{ 
 		T obj;
-		if (read((char*)&obj)) return obj;
-		corrupted();
+		read((char*)&obj);
+		return obj;
 	}
 
-	void parse(const String& s)  {
+	/// <summary>parse a string to convert to actual type</summary>
+	bool parse(const String& s)  {
 		T obj;
-		parseObj(s, obj);
-		storeObj((char*)&obj);
+		return parseObj(s, obj) && storeObj((char*)&obj);
 	}
 
+	/// <summary>affect value to option</summary>
 	T operator=(T obj)  {
 		storeObj((char*)&obj);
 		return obj;
 	}
-
+private:
+	/// <summary>vey basic Printable implementation</summary>
 	size_t printTo(Print& p) const
 	{
 		return p.print((T)*this);
 	}
 };
 
-class OptionString : public Option
+/// <summary>specific String implementation</summary>
+template<>
+class OptionT<String> : public Option
 {
 	byte _size;
 public:
-	OptionString(int addr, byte size, StringRom def)
+	OptionT(int addr, byte size, StringRom def)
 		:_size(size),Option(addr) {
 		if (!checkCrc() || reset()) storeObj(def);
 	}
 
+	/// <summary>binay size of the option</summary>
+	/// <remarq>note this is not actual string size, but option capacity</remarq>
 	byte size() const { return _size; }
 
-	void parse(const String& s)  { storeObj(s); }
-	void operator=(const String& s)  { parse(s); }
+	/// <summary>parse implementation for string</summary>
+	bool parse(const String& s)  { storeObj(s); return true; }
 
-	operator String();
-	size_t printTo(Print& p) const;
+	/// <summary>affect value to option</summary>
+	void operator=(const String& s)  { storeObj(s); }
+	void operator=(StringRom s)  { storeObj(s); }
+
+
+	/// <summary>print the string sirectly from eeprom</summary>
+	size_t printTo(Print&p) const
+	{
+		size_t n = 0;
+		int c;
+		OptionWriter opt(*this);
+		while ((c = opt.read()) > 0) n += p.print((char)c);
+		if (c == -1) return n;
+		corrupted();
+		return 0;
+	}
+
+	/// <summary>get actual option value</summary>
+	operator String()
+	{
+		String s("");
+
+		s.reserve(size());
+
+		int c;
+		OptionWriter opt(*this);
+		while ((c = opt.read()) > -1) { if (c) s += (char)c; }
+
+		if (c == -1) return s;
+		corrupted();
+		return "";
+	}
+
+
 };
 
-class OptionWriter
-{
-	const Option& _option;
-	byte _pos;
-	byte _crc;
-	
-public:
-	OptionWriter(const Option& option) :_option(option), _crc(0), _pos(0) {}
-	bool store(byte b);
-	int read();
-	uint8_t* addr() const { return _option.addr(_pos); }
-
-	byte pos() const { return _pos; }
-};
 
 #endif

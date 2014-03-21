@@ -36,7 +36,7 @@ StringRom s_newconf() { return F("newconf"); }
 StringRom s_default() { return F("default"); }
 
 
-xPL_OptionString xPL_Hbeat::newconf(7, 16, s_default(), cs_reconf, s_newconf());
+xPL_OptionT<String> xPL_Hbeat::newconf(7, 16, s_default(), cs_reconf, s_newconf());
 xPL_OptionT<int> xPL_Hbeat::interval((int)newconf.addrNext(), XPL_CONFIG_INTERVAL, cs_option, s_interval()  );
 
 /*
@@ -104,8 +104,9 @@ public:
 	}
 };
 
-void xPL_NewconfOption::parse(const String& value) {
+bool xPL_NewconfOption::parse(const String& value) {
 	(new xPL_NewConf(value))->trigTask();
+	return true;
 };
 
 
