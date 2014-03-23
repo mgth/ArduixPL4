@@ -39,6 +39,19 @@ typedef  unsigned long time_t;
 #endif
 #endif
 
+#include "float.h"
+#include "limits.h"
+template<typename T> T maxValue() { return 0; }
+template<> inline double maxValue<double>()  { return DBL_MAX; }
+template<> inline int maxValue<int>()  { return INT_MAX; }
+template<> inline unsigned int maxValue<unsigned int>()  { return UINT_MAX; }
+template<> inline long maxValue<long>()  { return LONG_MAX; }
+template<> inline unsigned long maxValue<unsigned long>()  { return ULONG_MAX; }
+template<typename T> T minValue() { return 0; }
+template<> inline double minValue<double>()  { return DBL_MIN; }
+template<> inline int minValue<int>()  { return INT_MIN; }
+template<> inline long minValue<long>()  { return LONG_MIN; }
+
 #include "ha_setup.h"
 
 #endif

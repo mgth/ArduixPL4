@@ -130,7 +130,7 @@ long HA_BMP085::readPressure() {
 
 	return p;
 }
-void HA_BMP085::run(){		readPressure();		trigTask();}/*********************************************************************/
+void HA_BMP085::run(){		readPressure();		trigTask(2000);}/*********************************************************************/
 void HA_BMP085::request(uint8_t a, int size) {
 
 	Wire.beginTransmission(BMP085_I2CADDR);

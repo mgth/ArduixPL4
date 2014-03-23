@@ -38,7 +38,7 @@ class Task
 
 protected:
 	/// <returns>scheduled position against t (<0 if before, >0 if after)</returns>
-	int compare(time_t t) const;
+	long compare(time_t t) const;
 
 	/// <summary>to be overriden for task execution</summary>
 	virtual void run() = 0;
@@ -46,23 +46,26 @@ protected:
 public:
 
 	/// <summary>run next task in queue if it's time to</summary>
-	static void loop();
+	static long loop();
 
-	// schedule next execution at determined delay in ms
 	/// <summary>schedule next execution at determined delay from now</summary>
 	/// <param name="delay">delay in ms</param>
 	void trigTask(time_t delay = 0);
 
-	// returns scheduled execution time
+	/// <summary>get scheduled execution time</summary>
+	/// <returns>scheduled execution time</returns>
 	time_t dueTime() const { return _dueTime; }
 
-	// by default new task is not scheduled
+	/// <remarq>by default new task is not scheduled</remarq>
 	Task() { }
 
-	// might give a delay for first execution
+	/// <summary>New task to be scheduled by default</summary>
+	/// <param name="delay">schedule first execution in ms from now</param>
 	Task(time_t delay) { trigTask(delay); }
 
-	//for Task to be sortable
+	/// <remarks>for Task to be sortable</remarks>
+	/// <param name="task">the task to compare this to</param>
+	/// <returns><0 if this is scheduled before task, >0 if this is scheduled after</returns>
 	int compare(const Task& task) const;
 };
 

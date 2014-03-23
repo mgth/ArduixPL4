@@ -26,33 +26,27 @@
 #define LINKEDLIST_H
 #if defined(ARDUINO) && ARDUINO >= 100#include "Arduino.h"#else#include "WProgram.h"#endif
 
-// macro to iterate all members of a list
-#define foreach(cls,obj) for(cls* obj=LinkedList<cls>::first();obj;obj=obj->LinkedList<cls>::next())
+/// <summary>macro to iterate all members of a list</summary>
 #define foreachfrom(cls,obj,from) for(cls* obj=from;obj;obj=obj->LinkedList<cls>::next())
-// macro to iterate pointers of the linked list
-#define foreachlnk(cls,lnk) for (cls** lnk = &LinkedList<cls>::_first; *lnk; lnk = &(*lnk)->LinkedList<cls>::_next)
+#define foreach(cls,obj) foreachfrom(cls,obj,LinkedList<cls>::first())
 
+/// <summary>macro to iterate pointers of the linked list</summary>
+#define foreachlnkfrom(cls,lnk,from) for (cls** lnk = from; *lnk; lnk = &(*lnk)->LinkedList<cls>::_next)
+#define foreachlnk(cls,lnk) foreachlnkfrom(cls,lnk,&LinkedList<cls>::_first)
+
+/// <summary>get sign of a signed value</summary>
+/// <returns>-1, 0 or 1</returns>
 template <typename T> int sgn(T val) {
 	return (T(0) < val) - (val < T(0));
 }
 
-template<class cls>
-class Sortable
-{
-public:
-	// place the task at the right position in the duetime queue
-	void relocate(cls** lnk)
-	{
-		((cls*)this)->unlink();
-		while (*lnk)
-		{
-			if ( ((cls*)this)->compare(**lnk)<0 ) break;
-			lnk = &(*lnk)->next();
-		}
-		((cls*)this)->link(*lnk);
-	}
-};
 
+/// <summary>Linked list template</summary>
+/// This is not a full implementation like vertex, with iterators and so, and it can only be used with objects that inherits it.
+/// Another drawback of not using iterators is that an object can only be linked once.
+/// But it has great advantages :
+/// Objects can get automatically linked at construction, with nothing more than declaration.
+/// <remarks>Note the special syntax : the template argument have to be the child class itself.</remarks>
 template<class cls>
 class LinkedList
 {
@@ -63,28 +57,37 @@ protected:
 
 public:
 	//operator cls*() { return (cls*)this; }
-	// returns next element or null if this is last
+	/// <summary>next element or null if this is last</summary>
 	cls*& next() { return _next; }
+
+	/// <summary>last element or null if list is empty</summary>
 	cls*& last() {
 		cls** c = &_next;
 		while (*c != NULL) c = &(*c)->_next;
 		return *c;
 	}
-	// returns first element of the list
+
+	/// <summary>get first element of the list</summary>
 	static cls*& first() { return _first; }
 	
-	//add this element to list
+	//
+	/// <summary>add this element to list</summary>
+	/// <param name="lnk">reference to a link where to insert element</param>
+	/// <remarks>
+	/// pass <c>previous.next()</c> or <c>cls::first()</c>
+	/// </remarks>
 	void link(cls*& lnk)
 	{
 		_next = lnk;
 		lnk = (cls*)this;
 	}
 
-	//remove an element from the main list
-	void unlink()
+	/// <summary>remove an element from the list</summary>
+	/// <param name="fst">head of the list, default : <c>first()</c></param>
+	void unlink(cls*& fst = first())
 	{
 		if (_next == this) return;
-		foreachlnk (cls,lnk)
+		foreachlnkfrom (cls,lnk,&fst)
 		{
 			if (*lnk == this)
 			{
@@ -95,17 +98,25 @@ public:
 		}
 	}
 
-	// return number of linked elements
-	static int count()
+	/// <summary>count elements to end</summary>
+	/// <param name="fst">element to start count from</param>
+	static int count(cls*& fst = first())
 	{
 		int c = 0;
 		foreach(cls, obj) { c++; }
 		return c;
 	}
 
-	void relocate(cls** lnk)
+	/// <summary>move element at his position</summary>
+	/// <remarks>
+	/// child object must implement <c>compare()</>
+	/// </remarks>
+	void relocate(cls*& fst = first())
 	{
-		((cls*)this)->unlink();
+		((cls*)this)->unlink(fst);
+
+		cls** lnk = &fst;
+
 		while (*lnk)
 		{
 			if (((cls*)this)->compare(**lnk)<0) break;
@@ -114,18 +125,24 @@ public:
 		((cls*)this)->link(*lnk);
 	}
 
-	// unlink deleted elements
+	/// <summary>destroy element</summary>
+	/// <remarks>if the element is not in the default list, it should be unlinked by hand</remarks>
 	~LinkedList<cls>() { unlink(); }
 
-	// unlinked elements should point to itsef
+	/// <summary>item creation with no argument, unlinked by default</summary>
+	/// <remarks>unlinked element point to itsef</remarks>
 	LinkedList<cls>() { _next = (cls*)this; }
+
+	/// <summary>linked item creation</summary>
+	/// <param name="lnk">element where to link</param>
 	LinkedList<cls>(cls*& lnk) { link(lnk); }
 };
 
+/// <summary>init empty list</summary>
 template<class cls>
 cls* LinkedList<cls>::_first = NULL;
 
-//AutoCollection : new elements will be linked at construction
+/// <summary>new elements will be linked at construction</summary>
 template<class cls>
 class AutoList : public LinkedList<cls>
 {

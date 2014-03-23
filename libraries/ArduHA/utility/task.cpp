@@ -25,41 +25,54 @@
 #include "task.h"
 
 // run next task in the queue
-void Task::loop()
+long Task::loop()
 {
 	if (first())
 	{
 		Task& task = *first();
-
-		if (task.compare(millis())<0)
+		long d = task.compare(millis());
+		if (d<0)
 		{
 			//detach task before execution
 			task.unlink();
 			//actual task execution
 			task.run();
+			if (first())
+			{
+				// return time to next task
+				return first()->compare(millis());
+			}
+			else
+				// no task in q
+				return -1;
 		}
+		// return time to next task
+		return d;
 	}
+	// no task in q
+	return -1;
 }
 
 // returns scheduled execution time
 void Task::trigTask(time_t delay)
 {
 	_dueTime = millis() + delay;
-	relocate(&first());
+	relocate();
 }
 
 // returns scheduled position against t
-int Task::compare(time_t t) const
+long Task::compare(time_t t) const
 {
-	time_t diff = _dueTime - t;
-
-	if (diff > LONG_MAX) return -1;
-	return diff>0;
+	return _dueTime - t;
+	
+//	if (diff > LONG_MAX) return -1;
+//	return diff>0;
 }
 
 //for Task to be sortable
 int Task::compare(const Task& task) const
 {
-	return compare(task.dueTime());
+	long diff = compare(task.dueTime());
+	return sgn(diff);
 }
 

@@ -228,7 +228,7 @@ public:
 		size_t n = 0;
 		int c;
 		OptionWriter opt(*this);
-		while ((c = opt.read()) > 0) n += p.print((char)c);
+		while ((c = opt.read()) >= 0) if (c) n += p.print((char)c);
 		if (c == -1) return n;
 		corrupted();
 		return 0;

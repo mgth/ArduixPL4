@@ -119,6 +119,6 @@ void Option::read(char* obj) const
 	{
 		*(obj++) = (char)c;
 	}
-	if (c == -1) 	corrupted();
+	if (c == -2) 	corrupted();
 }
 

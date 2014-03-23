@@ -27,64 +27,91 @@
 #include "limits.h"
 #include "linkedlist.h"
 
+/// <summary>Filter objest offers an input that will be feeded by a <c>FilterPin</c></summary>
 template <typename T>
-class Filter :public LinkedList< Filter<T> >
+class Filter
+#ifdef HA_FILTER_MULTI
+	:public LinkedList< Filter<T> >
+#endif
 {
 public:
 	virtual void input(const T& value) = 0;
 
 };
 
+/// <summary>output pin to link <c>Filter</c> to</summary>
 template <typename T>
 class FilterPin {
 	Filter<T>* _filter = NULL;
 public:
-	// Add a filter to listen to this pin
-	template <typename obj>
-	obj* link(obj* filter) { filter->Filter<T>::link(_filter); return filter; }
+	// 
+	/// <summary>Add a filter to listen to this pin</summary>
+	Filter<T>* link(Filter<T>* filter) {
+#ifdef HA_FILER_MULTI
+		filter->Filter<T>::link(_filter);
+#else
+		_filter = filter;
+#endif
+		return filter;
+	}
 
-	// write information to all listening filters on this pin
+	/// <summary>casted to return desired type</summary>
+	template <typename Tobj>
+	Tobj* link(Tobj* obj) { return (Tobj*)link((Filter<T>*)obj); }
+
+	/// <summary>write information to all listening filters on this pin</summary>
 	bool write(const T& value)
 	{
+#ifdef HA_FILTER_MULTI
 		foreachfrom(Filter<T>, f, _filter)
 		{
 			f->input(value);
 		}
+#else
+		_filter->input(value);
+#endif
 	}
 };
 
-#include "float.h"
-template<typename T,int _div=1>
+/// <summary>smothing filter</summary>
+template<typename T, int _div = 1>
 class KalmanFilter : public Filter<T>
 {
 	T _ratio;
 	T _value;
 
-	T initValue(double r) const { return DBL_MAX; }
-	T initValue(int r) const { return 2^15; }
 
-public:
-	KalmanFilter(T ratio)
-		:_ratio(ratio) {
-		_value = initValue(ratio);
-	}
-
-	FilterPin<T> out;
-
+	/// <summary>input function to feed filter</summary>
 	void input(T in)
 	{
-		if (_value == initValue(_ratio))
+		if (_value == maxValue<T>())
 			_value = in;
 		
 		_value += (in - _value) * _ratio / (T)_div;
 
 		out.write(_value);
 	}
+
+public:
+	/// <param name="ration">current to feedback ratio</param>
+	KalmanFilter(T ratio)
+		:_ratio(ratio) {
+		_value = initValue(ratio);
+	}
+
+	/// <summary>pin out to link filters to</summary>
+	FilterPin<T> out;
+
 };
 
 #define roundedShift(v,n) ((v >> (n - 1)) & (v >> n))
 
-
+/// <summary>Seconde order calibration filter for shifted integer</summary>
+/// <returns>( ax² + (1+b)x + c ) << shift</returns>
+/// This filter allow to calibrate sensors without requiering floats
+/// therefore, coeficients has to be inverted
+/// Also note that b is removed 1 before to be inverted
+/// and c shouls already be shifted.
 class Calibration2ndOrder_Shifted : public Filter<int>
 {
 	int _inv_a;
@@ -93,35 +120,41 @@ class Calibration2ndOrder_Shifted : public Filter<int>
 	byte _shift;
 public:
 
+	/// <summary>pin out to link filters to</summary>
 	FilterPin<int> out;
 
-	// Will return ( ax² + (1+b)x + c ) << shift
-	// With :
-	// inv_a = 1/a
-	// inv_b = 1/b
-	// nc = c << shift
+	/// <param name="inv_a">1/a</param>
+	/// <param name="inv_b">1/(b-1)</param>
+	/// <param name="nc">c << shift</param>
+	/// <param name="shift">number of byte shift</param>
 	Calibration2ndOrder_Shifted(int inv_a, int inv_b, int nc, byte shift=7) :_inv_a(inv_a), _inv_b(inv_b), _nc(nc), _shift(shift){}
 
+	/// <summary>input function to feed filter</summary>
 	void input(const int& nx);
 };
 
+/// <summary>Seconde order calibration filter for shifted integer</summary>
+/// <returns>( ax² + (1+b)x + c )</returns>
 class Calibration2ndOrder : public Filter<double> {
+public:
+	/// <param name="a">a</param>
+	/// <param name="b">b-1</param>
+	/// <param name="nc">c</param>
+	Calibration2ndOrder(double ax2, double bx, double c) :_ax2(ax2), _bx(bx), _c(c) {}
+
+	/// <summary>pin out to link filters to</summary>
+	FilterPin<double> out;
+
+private:
 	double _ax2;
 	double _bx;
 	double _c;
 
-public:
-	Calibration2ndOrder(double ax2, double bx, double c) :_ax2(ax2), _bx(bx), _c(c) {}
-
-	FilterPin<double> out;
-
-	void input(double value)
-	{
-		value *= _bx + value * _ax2;
-		value += _c;
-		out.write(value);
-	}
+	/// <summary>input function to feed filter</summary>
+	void input(const double& value);
 };
+
+/// <summary>Lookup table calibration Element</summary>
 template<typename Tin, typename Tout>
 class LutElement
 	: public LinkedList<LutElement<Tin,Tout> >
@@ -149,6 +182,7 @@ class LutElement
 	}
 };
 
+/// <summary>Lookup Table Calibration</summary>
 template<typename Tin, typename Tout>
 class CalibrationLUT : public Filter<Tin> {
 	LutElement<Tin,Tout>* _lut;
@@ -157,6 +191,7 @@ class CalibrationLUT : public Filter<Tin> {
 
 };
 
+/// <summary>Outputs value where threshold is meet</summary>
 template<typename T>
 class ThresholdFilter : public Filter<T> {
 public:
@@ -192,6 +227,7 @@ private:
 	}
 };
 
+/// <summary>Outputs value to serial port</summary>
 template<typename T>
 class OutputFilterSerial :public Filter<T>
 {

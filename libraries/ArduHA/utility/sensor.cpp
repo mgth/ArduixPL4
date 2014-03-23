@@ -31,3 +31,10 @@ void Calibration2ndOrder_Shifted::input(const int& nx)
 	out.write(nx + delta);
 }
 
+void Calibration2ndOrder::input(const double& value)
+{
+	double delta = _ax2 * value * value;
+	delta += _bx + value;
+	delta += _c;
+	out.write(value + delta);
+}

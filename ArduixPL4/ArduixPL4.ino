@@ -1,4 +1,5 @@
 #include "Wire.h"
+#include "Narcoleptic.h"
 
 #include <ArduHA.h>
 #include "ha_DS18x20.h"
@@ -81,6 +82,7 @@ _SETUP()
 _LOOP()
 {
 //	DBG('.'); delay(100);
-	Task::loop();
+	long d = Task::loop();
+	Narcoleptic.delay(d);
 }
 _END
