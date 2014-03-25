@@ -44,6 +44,7 @@ void Task::_sleep(uint8_t wdt_period) {
 	WDTCSR &= ~_BV(WDIE);
 }
 
+// sleep reducing power consumption
 void Task::sleep(time_t milliseconds) {
 	while (milliseconds >= 8000) { _sleep(WDTO_8S); milliseconds -= 8000; }
 	if (milliseconds >= 4000)    { _sleep(WDTO_4S); milliseconds -= 4000; }
@@ -57,6 +58,7 @@ void Task::sleep(time_t milliseconds) {
 	if (milliseconds >= 16)      { _sleep(WDTO_15MS); milliseconds -= 15; }
 }
 
+// run task if time to, or sleep if wait==true
 void Task::_run(bool wait)
 {
 	long d= compare(millis());
