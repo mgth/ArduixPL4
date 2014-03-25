@@ -30,6 +30,7 @@
 #include <xpl.h>
 #include "task.h"
 
+/// <summary>Base class for sending xPL messages</summary>
 class xPL_Adapter : public Task, public Stream
 
 #ifdef XPL_ADAPLTER_MULTI
@@ -40,7 +41,6 @@ class xPL_Adapter : public Task, public Stream
 #ifndef XPL_ADAPLTER_MULTI
 	static xPL_Adapter* _adapter;
 #endif
-	time_t _interval;
 
 	void parse();
 
@@ -50,27 +50,27 @@ class xPL_Adapter : public Task, public Stream
 	virtual bool send() = 0;
 
 public:
-	xPL_Adapter();
+	xPL_Adapter(time_t interval=100);
 
 	//send message
 	size_t sendMessage(const Printable& p);
 
-	//send message with all installed adapters
+	///<summary>send message with all installed adapters</summary>
 	static size_t send(const Printable& p);
 
-	// Task
-	virtual void run();
+	///<summary>for task support</summary>
+	void run();
 
-	// Read string until terminator, or line end
+	/// <summary>Read string until terminator, or line end</summary>
 	String readStringUntil(char terminator);
 
 	void flushUntil(char terminator);
 	int readChar(char c);
 	char cmpChar(char c, char terminator);
 
-	bool cmpUntil(char term, StringRom cmp);// { return readStringUntil(term) == cmp; }
-	bool cmpUntil(char term, const String& cmp);// { return readStringUntil(term) == cmp; }
-	bool cmpUntil(char term, char cmp);// { return readStringUntil(term)[0] == cmp; }
+	bool cmpUntil(char term, StringRom cmp);
+	bool cmpUntil(char term, const String& cmp);
+	bool cmpUntil(char term, char cmp);
 
 };
 

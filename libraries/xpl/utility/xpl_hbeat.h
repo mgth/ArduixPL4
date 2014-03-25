@@ -30,15 +30,27 @@
 class xPL_NewconfOption : public xPL_OptionT<String>
 {
 public:
-	xPL_NewconfOption() : xPL_OptionT<String>(7, 16, F("default"), cs_reconf, F("newconf")){}
+	xPL_NewconfOption(int addr)
+		: xPL_OptionT<String>(addr , 16, F("default"), cs_reconf, F("newconf")){}
+	bool parse(const String& value);
+	void operator=(const String& s){ xPL_OptionT<String>::operator=(s); }
+};
+
+class xPL_IntervalOption : public xPL_OptionT<int>
+{
+public:
+	xPL_IntervalOption(int addr, int defaultValue) 
+		: xPL_OptionT<int>(addr, defaultValue, cs_reconf, F("newconf")){}
+
+
 	bool parse(const String& value);
 };
 
 class xPL_Hbeat
 {
 public:
-	static xPL_OptionT<int> interval;
-	static xPL_OptionT<String> newconf;
+	static xPL_IntervalOption interval;
+	static xPL_NewconfOption newconf;
 	static String instance(){ return newconf; }
 	static String source() { return String(xPL::vendor()) + "-" + String(xPL::device()) + "." + instance(); }
 };

@@ -30,12 +30,11 @@
 xPL_Adapter* xPL_Adapter::_adapter = NULL;
 #endif
 
-xPL_Adapter::xPL_Adapter()
+xPL_Adapter::xPL_Adapter(time_t interval) :Task(0,interval)
 {
 #ifndef XPL_ADAPLTER_MULTI
 	_adapter = this;
 #endif
-	trigTask();
 };
 
 void xPL_Adapter::run() {
@@ -44,7 +43,6 @@ void xPL_Adapter::run() {
 		parse();
 		flush();
 	}
-	trigTask(_interval); // TODO: check what's should be the best value(any way to get arduino to sleep with eth card ?)
 }
 
 size_t xPL_Adapter::sendMessage(const Printable& p)

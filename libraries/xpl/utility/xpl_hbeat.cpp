@@ -36,8 +36,8 @@ StringRom s_newconf() { return F("newconf"); }
 StringRom s_default() { return F("default"); }
 
 
-xPL_OptionT<String> xPL_Hbeat::newconf(7, 16, s_default(), cs_reconf, s_newconf());
-xPL_OptionT<int> xPL_Hbeat::interval((int)newconf.addrNext(), XPL_CONFIG_INTERVAL, cs_option, s_interval()  );
+xPL_NewconfOption xPL_Hbeat::newconf(7);
+xPL_IntervalOption xPL_Hbeat::interval((int)newconf.addrNext(), XPL_CONFIG_INTERVAL);
 
 /*
 xPL_Hbeat message content
@@ -57,7 +57,7 @@ class xPL_HbeatTask: public Task
 {
 public:
 	//first hbeat occure at boot
-	xPL_HbeatTask() { trigTask(); }
+	xPL_HbeatTask() :Task(0, xPL_Hbeat::interval * 60000) { }
 	virtual void run()
 	{
 		xPL_Adapter::send(
@@ -70,7 +70,6 @@ public:
 				, "*"
 				, xPL_HbeatContent()));
 
-		trigTask(xPL_Hbeat::interval*60000);
 	}
 } _hbeatTask;
 
@@ -104,11 +103,16 @@ public:
 	}
 };
 
+bool xPL_IntervalOption::parse(const String& value) {
+	xPL_OptionT<int>::parse(value);
+	_hbeatTask.trigTask(0,*this);
+	return true;
+};
+
 bool xPL_NewconfOption::parse(const String& value) {
 	(new xPL_NewConf(value))->trigTask();
 	return true;
 };
-
 
 // PARSER : xpl-cmnd - hbeat.request
 
