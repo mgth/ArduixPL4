@@ -27,7 +27,7 @@
 #include <Print.h>
 #include <xpl.h>
 
-#include "utility/linkedlist.h"
+#include "linkedlist.h"
 #include "xpl_parser.h"
 
 class xPL_Device : public AutoList<xPL_Device>, public Printable {

@@ -38,8 +38,8 @@ extern LiquidCrystal_I2C lcd;
 #ifdef DEBUG_SLOW
 #define DBG(s,v) Serial.print(s);Serial.println(v); delay(500);
 #elif defined(DEBUG)
-#define DBGLN(s,v) Serial.print(s);Serial.println(v);
-#define DBG(s) Serial.print(s);
+#define DBGLN(s,v) {Serial.print(s);Serial.println(v);}
+#define DBG(s) {Serial.print(s);}
 #else
 #define DBGLN(s,v) ;
 #define DBG(s) ;

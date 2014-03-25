@@ -30,6 +30,7 @@ LiquidCrystal_I2C lcd(0x20,16,4);
 
 bool debug_flag=false;
 
+#ifdef __avr__
 uint8_t * heapptr, * stackptr;
 void check_mem() {
   stackptr = (uint8_t *)malloc(4);          // use stackptr temporarily
@@ -37,22 +38,19 @@ void check_mem() {
   free(stackptr);      // free up the memory again (sets stackptr to 0)
   stackptr =  (uint8_t *)(SP);           // save value of stack pointer
 }
-
-
 long get_free_memory()
 {
 	check_mem();
 	return stackptr-heapptr;
-
-/*	int free_memory;
-
-	if((int)__brkval == 0)
-		free_memory = ((int)&free_memory) - ((int)&__bss_end);
-	else
-		free_memory = ((int)&free_memory) - ((int)__brkval);
-
-	return free_memory;*/
 }
+#else
+long get_free_memory()
+{
+	return 0;
+}
+
+#endif
+
 
 long printMemCost(const StringRom msg) {
 

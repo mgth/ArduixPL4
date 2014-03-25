@@ -1,117 +1,126 @@
 /*  ArduHA - ArduixPL - xPL library for Arduino(tm)  Copyright (c) 2012/2014 Mathieu GRENET.  All right reserved.  This file is part of ArduHA / ArduixPL.    ArduixPL is free software: you can redistribute it and/or modify    it under the terms of the GNU General Public License as published by    the Free Software Foundation, either version 3 of the License, or    (at your option) any later version.    ArduixPL is distributed in the hope that it will be useful,    but WITHOUT ANY WARRANTY; without even the implied warranty of    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the    GNU General Public License for more details.    You should have received a copy of the GNU General Public License    along with ArduixPL.  If not, see <http://www.gnu.org/licenses/>.	  Modified 2014-3-16 by Mathieu GRENET 	  mailto:mathieu@mgth.fr	  http://www.mgth.fr*/#include "ha_BMP085.h"
 #include "debug.h"
 
+
+#define BMP085_I2CADDR           (0x77)
+#define BMP085_CHIPID            (0x55)
+
 typedef enum
 {
-	cal_AC1,
-	cal_AC2,
-	cal_AC3,
-	cal_AC4,
-	cal_AC5,
-	cal_AC6,
-	cal_B1,
-	cal_B2,
-	cal_MB,
-	cal_MC,
-	cal_MD
-} calData_t;
+	READTEMP = 0x2E,
+	READPRESSURE = 0x34
+} bmp085_cmd;
 
-#define BMP085_I2CADDR 0x77
-#define BMP085_CAL  0xAA  // R   Calibration data (16 bits)
-#define BMP085_CONTROL           0xF4 
-#define BMP085_TEMPDATA          0xF6
-#define BMP085_PRESSUREDATA      0xF6
-#define BMP085_READTEMPCMD       0x2E
-#define BMP085_READPRESSURECMD   0x34
+typedef enum
+{
+	CAL_AC1 = 0xAA,  // R   Calibration data (16 bits)
+	CAL_AC2 = 0xAC,  // R   Calibration data (16 bits)
+	CAL_AC3 = 0xAE,  // R   Calibration data (16 bits)
+	CAL_AC4 = 0xB0,  // R   Calibration data (16 bits)
+	CAL_AC5 = 0xB2,  // R   Calibration data (16 bits)
+	CAL_AC6 = 0xB4,  // R   Calibration data (16 bits)
+	CAL_B1 = 0xB6,  // R   Calibration data (16 bits)
+	CAL_B2 = 0xB8,  // R   Calibration data (16 bits)
+	CAL_MB = 0xBA,  // R   Calibration data (16 bits)
+	CAL_MC = 0xBC,  // R   Calibration data (16 bits)
+	CAL_MD = 0xBE,  // R   Calibration data (16 bits)
+	CHIPID = 0xD0,
+	VERSION = 0xD1,
+	SOFTRESET = 0xE0,
+	CONTROL = 0xF4,
+	TEMPDATA = 0xF6,
+	PRESSUREDATA = 0xF6,
+} bmp085_register;
+
 
 #include <util/delay.h>
-HA_BMP085::HA_BMP085(BMP085_res_t mode){	_oversampling = mode;
-
-	Wire.begin();
-
-	if (read8(0xD0) != 0x55) return;
+HA_BMP085::HA_BMP085(time_t first, time_t interval, BMP085_res_t mode) : _oversampling(mode),Task(first, interval), I2C(BMP085_I2CADDR){}void HA_BMP085::init(){	I2C::init();
+	if (read<byte>(CHIPID) != BMP085_CHIPID) return;
 
 	/* read calibration data */
-	for (byte c = cal_AC1; c <= cal_MD; c++)
-		_calibration[c] = read16(BMP085_CAL + (c<<1));
-
-	trigTask();
-}uint16_t HA_BMP085::readRawTemperature() {
-	write8(BMP085_CONTROL, BMP085_READTEMPCMD);
-	_delay_us(4500);
-	return read16(BMP085_TEMPDATA);
+#if 1
+	int16_t* cal = (int16_t*)&_calibration;
+	for (byte c = 0; c < 11; c++)
+	{
+//		cal[c] = (int16_t)read<byte>(CAL_AC1 + (2 * c)) << 8;
+//		cal[c] |= (int16_t)read<byte>(CAL_AC1 + 1 +(2 * c));
+		cal[c] = readBE<int16_t>(CAL_AC1 + (2 * c));
+	}
+#else
+	_calibration.ac1 = readBE<int16_t>(CAL_AC1);
+	_calibration.ac2 = readBE<int16_t>(CAL_AC2);
+	_calibration.ac3 = readBE<int16_t>(CAL_AC3);
+	_calibration.ac4 = readBE<uint16_t>(CAL_AC4);
+	_calibration.ac5 = readBE<uint16_t>(CAL_AC5);
+	_calibration.ac6 = readBE<uint16_t>(CAL_AC6);
+	_calibration.b1 = readBE<int16_t>(CAL_B1);
+	_calibration.b2 = readBE<int16_t>(CAL_B2);
+	_calibration.mb = readBE<int16_t>(CAL_MB);
+	_calibration.mc = readBE<int16_t>(CAL_MC);
+	_calibration.md = readBE<int16_t>(CAL_MD);
+#endif}bool HA_BMP085::queryTemperature()
+{
+	uint8_t cmd[] = { CONTROL, READTEMP };
+	send(cmd,2);
 }
+bool HA_BMP085::queryPressure()
+{
+	uint8_t cmd[] = { CONTROL, READPRESSURE + (_oversampling << 6) };
+	send(cmd,2);
+}
+void HA_BMP085::readRawTemperature()
+{
+	int32_t UT, X1, X2;
+
+	UT = readBE<uint16_t>(TEMPDATA);
+
+	// do temperature calculations
+	X1 = ((UT - _calibration.ac6) * (_calibration.ac5)) >> 15;
+	X2 = ((int32_t)_calibration.mc << 11) / (X1 + _calibration.md);
+	_B5 = X1 + X2;
+
+	int temp = ((_B5 + 8) << 3) / 10;
+	temperature.write(temp);
+}
+
 
 uint32_t HA_BMP085::readRawPressure() {
 	uint32_t raw;
 
-	write8(BMP085_CONTROL, BMP085_READPRESSURECMD + (_oversampling << 6));
-
-	switch (_oversampling)
-	{
-	case UltraLow: _delay_us(4500); break;
-	case Standard: _delay_us(7500); break;
-	case High: _delay_us(13500); break;
-	case UltraHigh: _delay_us(25500); break;
-	}
-
-	raw = read16(BMP085_PRESSUREDATA);
+	raw = readBE<uint16_t>(PRESSUREDATA);
 
 	raw <<= 8;
-	raw |= read8(BMP085_PRESSUREDATA + 2);
+	raw |= read<uint8_t>(PRESSUREDATA + 2);
 	raw >>= (8 - _oversampling);
 
-	/* this pull broke stuff, look at it later?
-	if (oversampling==0) {
-	raw <<= 8;
-	raw |= read8(BMP085_PRESSUREDATA+2);
-	raw >>= (8 - oversampling);
-	}
-	*/
 	return raw;
-}int HA_BMP085::readTemperature() {
-	int32_t UT, X1, X2, B5;     // following ds convention
-	int temp;
+}
+void HA_BMP085::process() {
 
-	UT = readRawTemperature();
-
-
-	// step 1
-	X1 = (UT - (int32_t)(uint16_t)_calibration[cal_AC6]) * ((int32_t)(uint16_t)_calibration[cal_AC5]) >> 15;
-	X2 = ((int32_t)_calibration[cal_MC] << 11) / (X1 + (int32_t)_calibration[cal_MD]);
-	B5 = X1 + X2;
-	temp = (B5 + 8) >> 4;
-	temp <<= 7;
-	temp /= 10;
-
-	return temp;
-}
-
-long HA_BMP085::readPressure() {
-	int32_t UT, UP, B3, B5, B6, X1, X2, X3, p;
+	int32_t UP, B3, B6, X1, X2, X3, p;
 	uint32_t B4, B7;
 
-	UT = readRawTemperature();
 	UP = readRawPressure();
 
-	// do temperature calculations
-	X1 = (UT - (int32_t)(uint16_t)_calibration[cal_AC6]) * ((int32_t)(uint16_t)_calibration[cal_AC5]) >> 15;
-	X2 = ((int32_t)_calibration[cal_MC] << 11) / (X1 + (int32_t)_calibration[cal_MD]);
-	B5 = X1 + X2;
-
-	temperature.write( (((long)B5 + 8)<<3) /10 );
+#if 0
+	// use datasheet numbers!
+	_calibration.ac6 = 23153;
+	_calibration.ac5 = 32757;
+	_calibration.mc = -8711;
+	_calibration.md = 2868;
+#endif
 
 	// do pressure calcs
-	B6 = B5 - 4000;
-	X1 = ((int32_t)_calibration[cal_B2] * ((B6 * B6) >> 12)) >> 11;
-	X2 = ((int32_t)_calibration[cal_AC2] * B6) >> 11;
+	B6 = _B5 - 4000;
+	X1 = ((int32_t)_calibration.b2 * ((B6 * B6) >> 12)) >> 11;
+	X2 = ((int32_t)_calibration.ac2 * B6) >> 11;
 	X3 = X1 + X2;
-	B3 = ((((int32_t)_calibration[cal_AC1] * 4 + X3) << _oversampling) + 2) / 4;
+	B3 = ((((int32_t)_calibration.ac1 * 4 + X3) << _oversampling) + 2) / 4;
 
-	X1 = ((int32_t)_calibration[cal_AC3] * B6) >> 13;
-	X2 = ((int32_t)_calibration[cal_B1] * ((B6 * B6) >> 12)) >> 16;
+	X1 = ((int32_t)_calibration.ac3 * B6) >> 13;
+	X2 = ((int32_t)_calibration.b1 * ((B6 * B6) >> 12)) >> 16;
 	X3 = ((X1 + X2) + 2) >> 2;
-	B4 = ((uint32_t)(uint16_t)_calibration[cal_AC4] * (uint32_t)(X3 + 32768)) >> 15;
+	B4 = ((uint32_t)_calibration.ac4 * (uint32_t)(X3 + 32768)) >> 15;
 	B7 = ((uint32_t)UP - B3) * (uint32_t)(50000UL >> _oversampling);
 
 	if (B7 < 0x80000000) {
@@ -127,60 +136,17 @@ long HA_BMP085::readPressure() {
 	p = p + ((X1 + X2 + (int32_t)3791) >> 4);
 
 	pressure.write(p);
-
-	return p;
 }
-void HA_BMP085::run(){		readPressure();		trigTask(2000);}/*********************************************************************/
-void HA_BMP085::request(uint8_t a, int size) {
+void HA_BMP085::run(){	switch (_state)	{	case state_init:		init();
 
-	Wire.beginTransmission(BMP085_I2CADDR);
-	Wire.write(a);
-	Wire.endTransmission();
+	case state_none:		queryTemperature();		_state = state_temperature;
+		trigTask(5);		break;	case state_temperature:		readRawTemperature();		queryPressure();		_state = state_pressure;
+		switch (_oversampling)
+		{
+		case UltraLow: trigTask(5); break;
+		case Standard: trigTask(8); break;
+		case High: trigTask(14); break;
+		case UltraHigh: trigTask(26); break;
+		}
+		break;	case state_pressure:		process();		_state = state_none;		break;	}}/*********************************************************************/
 
-	Wire.requestFrom(BMP085_I2CADDR, size);
-}
-
-void HA_BMP085::readBytes(uint8_t a, void* ret, int size) {
-
-	request(a, size);
-
-	if (size > 0)
-	{
-		for (int i = 0; i < size; i++)
-			*((uint8_t*)ret + i) = Wire.read();
-	}
-	else
-	{
-		for (int i = -size-1; i>=0; i--)
-			*((uint8_t*)ret + i) = Wire.read(); 
-	}
-
-	Wire.endTransmission();
-}
-
-uint8_t HA_BMP085::read8(uint8_t a) {
-	request(a, 1);
-	uint8_t ret = Wire.read();
-	Wire.endTransmission();
-	return ret;
-}
-
-uint16_t HA_BMP085::read16(uint8_t a) {
-	request(a, 2);
-	uint16_t ret = (uint16_t)Wire.read() << 8;
-	ret |= Wire.read();
-	Wire.endTransmission();
-	return ret;
-}
-
-void HA_BMP085::write8(uint8_t a, uint8_t d) {
-	Wire.beginTransmission(BMP085_I2CADDR); // start transmission to device 
-#if (ARDUINO >= 100)
-	Wire.write(a); // sends register address to read from
-	Wire.write(d);  // write data
-#else
-	Wire.send(a); // sends register address to read from
-	Wire.send(d);  // write data
-#endif
-	Wire.endTransmission(); // end transmission
-}

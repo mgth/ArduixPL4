@@ -4,18 +4,28 @@
 #define HA_BMP085_h
 
 #include <ArduHA.h>
-#include "utility/task.h"
-#include "utility/sensor.h"
-#include "Wire.h"
-//#include "utility/BMP085.h"typedef enum{	UltraLow,	Standard,	High,	UltraHigh} BMP085_res_t;class HA_BMP085:public Task {
-int _pin;byte _type;uint8_t _oversampling;int16_t _calibration[11];private:
-	void request(uint8_t a, int size);
-	void readBytes(uint8_t a, void* ret, int size);
-	uint8_t read8(uint8_t addr);
-	uint16_t read16(uint8_t addr);
-	void write8(uint8_t addr, uint8_t data);
+#include "task.h"
+#include "sensor.h"
+#include "i2c.h"
+//#include "Wire.h"
+//#include "utility/BMP085.h"typedef enum{	UltraLow,	Standard,	High,	UltraHigh} BMP085_res_t;typedef struct
+{
+	int16_t  ac1;
+	int16_t  ac2;
+	int16_t  ac3;
+	uint16_t ac4;
+	uint16_t ac5;
+	uint16_t ac6;
+	int16_t  b1;
+	int16_t  b2;
+	int16_t  mb;
+	int16_t  mc;
+	int16_t  md;
+} bmp085_calib_data;typedef enum{	state_init,	state_none,	state_temperature,	state_pressure} state_t;class HA_BMP085:public Task, public I2C {
+uint8_t _oversampling;bmp085_calib_data _calibration;state_t _state = state_init;int32_t _B5;private:
 
-	uint16_t readRawTemperature();	uint32_t readRawPressure();public:FilterPin<int> temperature;FilterPin<long> pressure;	HA_BMP085(BMP085_res_t mode=UltraHigh);		int readTemperature();	long readPressure();
-	void run();};
+	void init();	void readRawTemperature();	uint32_t readRawPressure();	void process();public:FilterPin<int> temperature;FilterPin<long> pressure;	HA_BMP085(time_t first, time_t interval, BMP085_res_t mode=UltraHigh);	bool queryTemperature();
+	bool queryPressure();
+	void run();};
 #endif
 

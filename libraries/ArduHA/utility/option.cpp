@@ -21,7 +21,7 @@
 	  mailto:mathieu@mgth.fr
 	  http://www.mgth.fr
 */
-#include <avr/crc16.h>
+#include <util/crc16.h>
 #include <avr/eeprom.h>
 
 
@@ -31,7 +31,9 @@
 bool Option::configured = true;
 
 //retrieve byte at option position
-byte Option::get(byte pos) const { return eeprom_read_byte(addr(pos)); }
+byte Option::get(byte pos) const {
+	return eeprom_read_byte(addr(pos));
+}
 void Option::set(byte pos, byte b) const
 {
 	if (b != get(pos))

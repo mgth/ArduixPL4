@@ -25,7 +25,7 @@
 #ifndef XPL_ENC28J60_H
 #define XPL_ENC28J60_H
 #include <xpl.h>
-#include "utility/task.h"
+#include "task.h"
 #include "utility/xpl_adapter.h"
 #include "utility/option.h"
 

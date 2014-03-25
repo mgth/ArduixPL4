@@ -1,10 +1,8 @@
-#include "Wire.h"
-#include "Narcoleptic.h"
-
 #include <ArduHA.h>
 #include "ha_DS18x20.h"
 #include "ha_DHT.h"
 #include "ha_BMP085.h"
+#include "ha_BH1750.h"
 
 #include <xpl.h>
 #include <xpl_ENC28J60.h>
@@ -15,18 +13,17 @@
 xPL_ENC28J60Adapter adapter;
 xPL_Serial debugAdapter;
 
-HA_DS18x20_GlobalTask tempTask(60000);
-HA_SensorDHT dht22(6,22);
-HA_BMP085 bmp085;
-
+HA_DHTxx dht22(0,999,6,22);
+HA_BMP085 bmp085(0,998);
+HA_BH1750 bh1750(0, 997,0x23,2,false);
 
 _SETUP()
 {
 
-	HA_DS18x20_Multi::discover(12);
+	HA_DS18x20::discover(12);
 
 	int i = 0;
-	foreach(HA_DS18x20_Multi, s)
+	foreach(HA_DS18x20, s)
 	{
 		String name = "T" + String(i++);
 		
@@ -37,6 +34,7 @@ _SETUP()
 			.link(new xPL_Sensor<int, 128>(name, F("temp"), F("c")))
 			;
 	}
+	HA_DS18x20::startGlobalConversion(5000);
 
 	dht22.temperature
 		.link(new ThresholdFilter<int>(24, 5 * 60000))->out
@@ -58,9 +56,10 @@ _SETUP()
 		.link(new xPL_Sensor<long, 100>(F("bmp_p"), F("pressure"), F("hPa")))
 		;
 
-
-	DBGLN("opt:", Option::reset());
-
+	bh1750.out
+		.link(new ThresholdFilter<int>(1, 5 * 60000))->out
+		.link(new xPL_Sensor<int, 2>(F("light"), F("illuminance"), F("lx")))
+		;
 
 	DBG_MEM(F("loop"));
 	//int a;
@@ -82,7 +81,6 @@ _SETUP()
 _LOOP()
 {
 //	DBG('.'); delay(100);
-	long d = Task::loop();
-	Narcoleptic.delay(d);
+	Task::loop(false);
 }
 _END

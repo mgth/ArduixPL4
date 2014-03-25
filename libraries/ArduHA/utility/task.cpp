@@ -23,34 +23,74 @@
 */
 
 #include "task.h"
+#include <avr/wdt.h>
+#include <avr/sleep.h>
+#include "debug.h"
+
+SIGNAL(WDT_vect) {
+	wdt_disable();
+	wdt_reset();
+	WDTCSR &= ~_BV(WDIE);
+}
+
+void Task::_sleep(uint8_t wdt_period) {
+	wdt_enable(wdt_period);
+	wdt_reset();
+	WDTCSR |= _BV(WDIE);
+	//  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+	set_sleep_mode(SLEEP_MODE_EXT_STANDBY);
+	sleep_mode();
+	wdt_disable();
+	WDTCSR &= ~_BV(WDIE);
+}
+
+void Task::sleep(time_t milliseconds) {
+	while (milliseconds >= 8000) { _sleep(WDTO_8S); milliseconds -= 8000; }
+	if (milliseconds >= 4000)    { _sleep(WDTO_4S); milliseconds -= 4000; }
+	if (milliseconds >= 2000)    { _sleep(WDTO_2S); milliseconds -= 2000; }
+	if (milliseconds >= 1000)    { _sleep(WDTO_1S); milliseconds -= 1000; }
+	if (milliseconds >= 500)     { _sleep(WDTO_500MS); milliseconds -= 500; }
+	if (milliseconds >= 250)     { _sleep(WDTO_250MS); milliseconds -= 250; }
+	if (milliseconds >= 125)     { _sleep(WDTO_120MS); milliseconds -= 120; }
+	if (milliseconds >= 64)      { _sleep(WDTO_60MS); milliseconds -= 60; }
+	if (milliseconds >= 32)      { _sleep(WDTO_30MS); milliseconds -= 30; }
+	if (milliseconds >= 16)      { _sleep(WDTO_15MS); milliseconds -= 15; }
+}
+
+void Task::_run(bool wait)
+{
+	long d= compare(millis());
+	if (wait)
+	{
+		while (d > 0)
+		{
+			sleep(d);
+			d = compare(millis());
+		}
+	}
+	if (d <= 0)
+	{
+		//detach task before execution
+		unlink();
+		//actual task execution
+		run();
+
+		if (recurrent() && !linked()) trigTask(_interval);
+	}
+}
 
 // run next task in the queue
-long Task::loop()
+void Task::loop(bool sleep)
 {
 	if (first())
 	{
-		Task& task = *first();
-		long d = task.compare(millis());
-		if (d<0)
-		{
-			//detach task before execution
-			task.unlink();
-			//actual task execution
-			task.run();
-			if (first())
-			{
-				// return time to next task
-				return first()->compare(millis());
-			}
-			else
-				// no task in q
-				return -1;
-		}
-		// return time to next task
-		return d;
+		first()->_run(sleep);
 	}
-	// no task in q
-	return -1;
+	else
+	{
+		//TODO: what should we do if no more tasks in queue ?
+		// that should never happen, maybe we should reboot ?
+	}
 }
 
 // returns scheduled execution time
@@ -59,14 +99,16 @@ void Task::trigTask(time_t delay)
 	_dueTime = millis() + delay;
 	relocate();
 }
+void Task::trigTask(time_t delay,time_t interval)
+{
+	_interval = interval;
+	trigTask(delay);
+}
 
 // returns scheduled position against t
 long Task::compare(time_t t) const
 {
 	return _dueTime - t;
-	
-//	if (diff > LONG_MAX) return -1;
-//	return diff>0;
 }
 
 //for Task to be sortable

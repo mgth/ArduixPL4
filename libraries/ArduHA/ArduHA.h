@@ -25,11 +25,20 @@
 #define ARDUHA_H
 #if defined(ARDUINO) && ARDUINO >= 100#include "Arduino.h"#else#include "WProgram.h"#endif
 
-typedef  unsigned long time_t;
+#include <avr/pgmspace.h>
+#include <WString.h>
+#include "float.h"
+#include "limits.h"
+
+typedef  long time_t;
 
 #define GCC_VERSION (__GNUC__ * 10000 \
 	+ __GNUC_MINOR__ * 100 \
 	+ __GNUC_PATCHLEVEL__)
+
+#ifdef __SAM3X8E__
+#define RAMSIZE (96*1024)
+#endif
 
 #if !defined(RAMSIZE)
 #if defined(RAMSTART)
@@ -39,8 +48,6 @@ typedef  unsigned long time_t;
 #endif
 #endif
 
-#include "float.h"
-#include "limits.h"
 template<typename T> T maxValue() { return 0; }
 template<> inline double maxValue<double>()  { return DBL_MAX; }
 template<> inline int maxValue<int>()  { return INT_MAX; }
@@ -51,6 +58,43 @@ template<typename T> T minValue() { return 0; }
 template<> inline double minValue<double>()  { return DBL_MIN; }
 template<> inline int minValue<int>()  { return INT_MIN; }
 template<> inline long minValue<long>()  { return LONG_MIN; }
+
+#define NEVER (maxValue<time_t>())
+
+
+typedef const __FlashStringHelper* StringRom;
+
+// Flashstring dedub, do not work on due
+#ifndef __SAM3X8E__
+/**
+* Create constant string in program memory. Allow IOStream output
+* operator. Allows link time reduction of equal strings or substrings.
+* @param[in] s string literal (at compile time).
+* @return string literal in program memory.
+*/
+
+#undef PSTR
+#define PSTR(str) __PSTR1(str,__COUNTER__)
+#define __PSTR1(str,num) __PSTR2(str,num)
+#define __PSTR2(str,num) \
+	(__extension__(\
+{ \
+	const char* ptr; \
+	asm volatile (\
+	".pushsection .progmem.data, \"SM\", @progbits, 1" "\n\t" \
+	"PSTR_" #num ": .string " #str "\n\t" \
+	".popsection" "\n\t" \
+	); \
+	asm volatile (\
+	"ldi %A0, lo8(PSTR_" #num ")" "\n\t" \
+	"ldi %B0, hi8(PSTR_" #num ")" "\n\t" \
+	: "=d" (ptr) \
+	); \
+	ptr; \
+} \
+	))
+#endif
+
 
 #include "ha_setup.h"
 

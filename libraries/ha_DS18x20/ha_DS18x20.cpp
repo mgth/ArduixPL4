@@ -1,6 +1,6 @@
-/*  ArduHA - ArduixPL - xPL library for Arduino(tm)  Copyright (c) 2012/2014 Mathieu GRENET.  All right reserved.  This file is part of ArduHA / ArduixPL.    ArduixPL is free software: you can redistribute it and/or modify    it under the terms of the GNU General Public License as published by    the Free Software Foundation, either version 3 of the License, or    (at your option) any later version.    ArduixPL is distributed in the hope that it will be useful,    but WITHOUT ANY WARRANTY; without even the implied warranty of    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the    GNU General Public License for more details.    You should have received a copy of the GNU General Public License    along with ArduixPL.  If not, see <http://www.gnu.org/licenses/>.	  Modified 2014-3-14 by Mathieu GRENET 	  mailto:mathieu@mgth.fr	  http://www.mgth.fr*/#
+/*  ArduHA - ArduixPL - xPL library for Arduino(tm)  Copyright (c) 2012/2014 Mathieu GRENET.  All right reserved.  This file is part of ArduHA / ArduixPL.    ArduixPL is free software: you can redistribute it and/or modify    it under the terms of the GNU General Public License as published by    the Free Software Foundation, either version 3 of the License, or    (at your option) any later version.    ArduixPL is distributed in the hope that it will be useful,    but WITHOUT ANY WARRANTY; without even the implied warranty of    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the    GNU General Public License for more details.    You should have received a copy of the GNU General Public License    along with ArduixPL.  If not, see <http://www.gnu.org/licenses/>.	  Modified 2014-3-23 by Mathieu GRENET 	  mailto:mathieu@mgth.fr	  http://www.mgth.fr*/#
 /*
-Largely derived from OneWire lib from Miles Burton Arduino Temperature Control Library
+Largely derived from Miles Burton Arduino Temperature Control Library
 http://www.milesburton.com/?title=Dallas_Temperature_Control_Library
 https://github.com/milesburton/Arduino-Temperature-Control-Library
 */
@@ -20,7 +20,7 @@ https://github.com/milesburton/Arduino-Temperature-Control-Library
 #define RECALLSCRATCH   0xB8  // Reload from last known
 #define READPOWERSUPPLY 0xB4  // Determine if device needs parasite power
 #define ALARMSEARCH     0xEC  // Query bus for devices with an alarm condition
-OneWire HA_DS18x20::_wire(ONE_WIRE_BUS);bool HA_DS18x20::_parasite = false;bool HA_DS18x20_Multi::_globalPendingRequest = false;typedef enum scratch {TEMP_LSB,
+OneWire HA_DS18x20::_wire(ONE_WIRE_BUS);bool HA_DS18x20::_parasite = false;time_t HA_DS18x20::_globalInterval = maxValue<time_t>();typedef enum scratch {TEMP_LSB,
 TEMP_MSB,
 HIGH_ALARM_TEMP,
 LOW_ALARM_TEMP,
@@ -42,13 +42,13 @@ bool validAddress(const uint8_t* addr)
 		uint8_t power = _wire.read_bit();
 		return power == 0;
 	}
-}HA_DS18x20* HA_DS18x20_Multi::getByAddr(uint8_t addr[8]){	foreach(HA_DS18x20_Multi, d)	{		if (d->_addr == addr)		{			return d;		}	}	return NULL;}void HA_DS18x20_Multi::discover(uint8_t resolution){	OneWireSearch s(_wire);
+}HA_DS18x20* HA_DS18x20::getByAddr(uint8_t addr[8]){	foreach(HA_DS18x20, d)	{		if (d->_addr == addr)		{			return d;		}	}	return NULL;}void HA_DS18x20::discover(uint8_t resolution){	OneWireSearch s(_wire);
 
 	while (s.search())
 	{
 		if (validAddress(s.addr()))
 		{
-			new HA_DS18x20_Multi(s.addr(), resolution);
+			new HA_DS18x20(s.addr(), resolution);
 		}
 	}
 }HA_DS18x20::HA_DS18x20(uint8_t* addr, uint8_t resolution){	if (addr)		memcpy(_addr, addr, 8);	else		memset(_addr, 0, 8);	if (!_parasite && readPowerSupply()) _parasite = true;
@@ -57,6 +57,5 @@ bool validAddress(const uint8_t* addr)
 		raw = ((raw & 0xfff0) << 3) - 16 + (((data[COUNT_PER_C] - data[COUNT_REMAIN]) << 7) / data[COUNT_PER_C]);
 	
 	_pendingRequest = false;
-		return raw;}bool HA_DS18x20::startConversion(){	if (_wire.request(STARTCONVO, _addr))	{		_pendingRequest = true;		return true;	}	return false;}bool HA_DS18x20_Multi::startGlobalConversion(){	if (_wire.request(STARTCONVO, NULL))	{		_globalPendingRequest = true;		return true;	}	return false;}time_t HA_DS18x20::conversionDuration(){	return 750 / (1 << (3 - (_configuration >> 5)));}void HA_DS18x20_Task::run(){	if (_sensor.pendingRequest())	{		int16_t raw = _sensor.read();		if (raw!=SHRT_MAX) _sensor.temperature.write(raw);	}	else if (_sensor.startConversion())
-	{		trigTask(_sensor.conversionDuration());		return;	}	trigTask(_interval);}void HA_DS18x20_GlobalTask::run(){	if (HA_DS18x20_Multi::globalPendingRequest())	{		foreach(HA_DS18x20_Multi, sensor)		{			int16_t raw = sensor->read();			if (raw != SHRT_MAX) sensor->temperature.write(raw);		}	}	else if (HA_DS18x20_Multi::startGlobalConversion())
-	{		time_t duration = 0;		foreach(HA_DS18x20_Multi, sensor)		{			duration = max(duration,sensor->conversionDuration());		}		trigTask(duration);		return;	}	trigTask(_interval);}
+		return raw;}bool HA_DS18x20::startConversion(){	if (_wire.request(STARTCONVO, _addr))	{		_pendingRequest = true;		return true;	}	return false;}bool HA_DS18x20::startGlobalConversion(time_t interval){	bool q = false;	foreach(HA_DS18x20, sensor)	{		if (!sensor->_pendingRequest)		{			if (!q) {				_wire.request(STARTCONVO, NULL); q = true;			}			sensor->_pendingRequest = true;			sensor->trigTask(sensor->conversionDuration(),interval);		}	}	return q;}time_t HA_DS18x20::conversionDuration(){	return 750 / (1 << (3 - (_configuration >> 5)));}void HA_DS18x20::run(){	if (_pendingRequest)	{		int16_t raw = read();		if (raw!=SHRT_MAX) temperature.write(raw);		_pendingRequest = false;		foreach(HA_DS18x20, sensor)		{			if (sensor->_pendingRequest) return;		}	}	else if (startConversion())
+	{		trigTask(conversionDuration());		return;		startGlobalConversion();	}}

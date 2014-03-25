@@ -28,7 +28,7 @@
 
 #include <ArduHA.h>
 #include <xpl.h>
-#include "utility/task.h"
+#include "task.h"
 
 class xPL_Adapter : public Task, public Stream
 

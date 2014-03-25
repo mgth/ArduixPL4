@@ -24,7 +24,7 @@
 #ifndef XPL_SENSOR_H
 #define XPL_SENSOR_H
 #include <xpl.h>
-#include "utility/sensor.h"
+#include "sensor.h"
 #include "xpl_device.h"
 #include "xpl_adapter.h"
 
@@ -50,7 +50,7 @@ public:
 	xPL_Sensor(String name, StringRom typ, StringRom units)
 		:xPL_SensorBase(name, typ, units) {}
 
-	void input(const T& value)
+	void input(T value)
 	{
 		_lastValue = value;
 		sendCurrent();

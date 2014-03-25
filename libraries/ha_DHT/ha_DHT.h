@@ -6,16 +6,16 @@
 #define XPL_DHT_h
 
 #include <ArduHA.h>
-#include "utility/task.h"
-#include "utility/sensor.h"
+#include "task.h"
+#include "sensor.h"
 
 #define DHTLIB_OK				0
 #define DHTLIB_ERROR_CHECKSUM	-1
 #define DHTLIB_ERROR_TIMEOUT	-2
 #define DHTLIB_INVALID_VALUE	-999
-class HA_SensorDHT:public Task {
-	int _pin;	byte _type;	public:	FilterPin<int> temperature;	FilterPin<int> humidity;	int read(uint8_t bits[5]);
+class HA_DHTxx :public Task {
+	uint8_t _pin;	uint8_t _powerPin;	byte _type;	bool _waiting;	public:	FilterPin<int> temperature;	FilterPin<int> humidity;	int read(uint8_t bits[5]);
 	int read(int& t, int& h);
-	int readWhile(bool state);	HA_SensorDHT(uint8_t pin, byte type);	void run();};
+	int readWhile(bool state);	HA_DHTxx(		time_t first,		time_t interval,		uint8_t pin,		byte type,		uint8_t powerPin = 0xFF		);	void run();};
 #endif
 

@@ -17,7 +17,7 @@
     You should have received a copy of the GNU General Public License
     along with ArduixPL.  If not, see <http://www.gnu.org/licenses/>.
 
-	  Modified 2014-3-14 by Mathieu GRENET 
+	  Modified 2014-3-23 by Mathieu GRENET 
 	  mailto:mathieu@mgth.fr
 	  http://www.mgth.fr
 */
@@ -27,6 +27,11 @@
 #include "limits.h"
 #include "linkedlist.h"
 
+/// Sensor constructor : 
+/// - hardware address
+/// - sensor options
+/// - interval
+
 /// <summary>Filter objest offers an input that will be feeded by a <c>FilterPin</c></summary>
 template <typename T>
 class Filter
@@ -35,19 +40,19 @@ class Filter
 #endif
 {
 public:
-	virtual void input(const T& value) = 0;
+	virtual void input(T value) = 0;
 
 };
 
 /// <summary>output pin to link <c>Filter</c> to</summary>
 template <typename T>
 class FilterPin {
-	Filter<T>* _filter = NULL;
+	Filter<T>* _filter;
 public:
-	// 
+	FilterPin() :_filter(NULL){};
 	/// <summary>Add a filter to listen to this pin</summary>
 	Filter<T>* link(Filter<T>* filter) {
-#ifdef HA_FILER_MULTI
+#ifdef HA_FILTER_MULTI
 		filter->Filter<T>::link(_filter);
 #else
 		_filter = filter;
@@ -60,7 +65,7 @@ public:
 	Tobj* link(Tobj* obj) { return (Tobj*)link((Filter<T>*)obj); }
 
 	/// <summary>write information to all listening filters on this pin</summary>
-	bool write(const T& value)
+	bool write(T value)
 	{
 #ifdef HA_FILTER_MULTI
 		foreachfrom(Filter<T>, f, _filter)
@@ -68,7 +73,7 @@ public:
 			f->input(value);
 		}
 #else
-		_filter->input(value);
+		if (_filter) _filter->input(value);
 #endif
 	}
 };
@@ -130,7 +135,7 @@ public:
 	Calibration2ndOrder_Shifted(int inv_a, int inv_b, int nc, byte shift=7) :_inv_a(inv_a), _inv_b(inv_b), _nc(nc), _shift(shift){}
 
 	/// <summary>input function to feed filter</summary>
-	void input(const int& nx);
+	void input(int nx);
 };
 
 /// <summary>Seconde order calibration filter for shifted integer</summary>
@@ -209,7 +214,7 @@ private:
 
 	bool _reset;
 
-	void input(const T& value)
+	void input(T value)
 	{
 		T threshold = _threshold;
 		if (!_reset && _timeThreshold > 0)

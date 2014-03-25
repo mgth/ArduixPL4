@@ -26,7 +26,7 @@
 #define XPL_PARSER_H
 #include <xpl.h>
 
-#include "utility/linkedlist.h"
+#include "linkedlist.h"
 #include "xpl_message.h"
 
 typedef byte nbparsers_t;

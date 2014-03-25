@@ -30,37 +30,7 @@
 
 //typedef const char* StringRom;
 
-typedef const __FlashStringHelper* StringRom;
 
-/**
-* Create constant string in program memory. Allow IOStream output
-* operator. Allows link time reduction of equal strings or substrings.
-* @param[in] s string literal (at compile time).
-* @return string literal in program memory.
-*/
-
-#undef PSTR
-#define PSTR(str) __PSTR1(str,__COUNTER__)
-#define __PSTR1(str,num) __PSTR2(str,num)
-#define __PSTR2(str,num) \
-	(__extension__(\
-{ \
-	const char* ptr; \
-	asm volatile (\
-	".pushsection .progmem.data, \"SM\", @progbits, 1" "\n\t" \
-	"PSTR_" #num ": .string " #str "\n\t" \
-	".popsection" "\n\t" \
-	); \
-	asm volatile (\
-	"ldi %A0, lo8(PSTR_" #num ")" "\n\t" \
-	"ldi %B0, hi8(PSTR_" #num ")" "\n\t" \
-	: "=d" (ptr) \
-	); \
-	ptr; \
-} \
-	))
-	
-//#define S(string) F(#string)
 
 
 

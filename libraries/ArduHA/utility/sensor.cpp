@@ -23,7 +23,7 @@
 */
 #include "sensor.h"
 
-void Calibration2ndOrder_Shifted::input(const int& nx)
+void Calibration2ndOrder_Shifted::input(int nx)
 {
 	long lnx = (long)nx + (1 << (_shift - 1));
 	int delta = (long)_nc + (((lnx*lnx / _inv_a) + (lnx << _shift) / _inv_b) >> _shift); //132
