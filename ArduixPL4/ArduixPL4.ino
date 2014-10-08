@@ -17,10 +17,11 @@ HA_DHTxx dht22(0,999,6,22);
 HA_BMP085 bmp085(0,998);
 HA_BH1750 bh1750(0, 997,0x23,2,false);
 
+OneWire wire(7);
+
 _SETUP()
 {
-
-	HA_DS18x20::discover(12);
+	HA_DS18x20::discover(wire,12);
 
 	int i = 0;
 	foreach(HA_DS18x20, s)
@@ -34,7 +35,7 @@ _SETUP()
 			.link(new xPL_Sensor<int, 128>(name, F("temp"), F("c")))
 			;
 	}
-	HA_DS18x20::startGlobalConversion(5000);
+	//HA_DS18x20::first()->startGlobalConversion(5000);
 
 	dht22.temperature
 		.link(new ThresholdFilter<int>(24, 5 * 60000))->out

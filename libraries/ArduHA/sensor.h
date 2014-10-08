@@ -26,13 +26,22 @@
 #include <arduha.h>
 #include "limits.h"
 #include "linkedlist.h"
+#include "task.h"
+
+#ifdef HA_FLOAT
+typedef float temperature_t;
+#else
+typedef int16_t temperature_t;
+#endif
+
+
 
 /// Sensor constructor : 
 /// - hardware address
 /// - sensor options
 /// - interval
 
-/// <summary>Filter objest offers an input that will be feeded by a <c>FilterPin</c></summary>
+/// <summary>Filter object offers an input that will be fed by a <c>FilterPin</c></summary>
 template <typename T>
 class Filter
 #ifdef HA_FILTER_MULTI
@@ -41,7 +50,7 @@ class Filter
 {
 public:
 	virtual void input(T value) = 0;
-
+	virtual void error() {};
 };
 
 /// <summary>output pin to link <c>Filter</c> to</summary>
@@ -76,6 +85,18 @@ public:
 		if (_filter) _filter->input(value);
 #endif
 	}
+
+	void error()
+	{
+#ifdef HA_FILTER_MULTI
+			foreachfrom(Filter<T>, f, _filter)
+			{
+				f->error();
+			}
+#else
+			if (_filter) _filter->error();
+#endif
+		}
 };
 
 /// <summary>smothing filter</summary>

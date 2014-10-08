@@ -36,14 +36,14 @@
 #endif
 
 #include "pins_arduino.h"
-#include "twi.h"
+#include "ha_twi.h"
 
 static volatile uint8_t twi_state;
 static volatile uint8_t twi_slarw;
 static volatile uint8_t twi_sendStop;			// should the transaction end with a stop
 static volatile uint8_t twi_inRepStart;			// in the middle of a repeated start
 
-static void (*twi_onSlaveTransmit)(void);
+static void(*ha_twi_onSlaveTransmit)(void);
 static void (*twi_onSlaveReceive)(uint8_t*, int);
 
 static uint8_t twi_masterBuffer[TWI_BUFFER_LENGTH];
@@ -305,7 +305,7 @@ void twi_attachSlaveRxEvent( void (*function)(uint8_t*, int) )
  */
 void twi_attachSlaveTxEvent( void (*function)(void) )
 {
-  twi_onSlaveTransmit = function;
+	ha_twi_onSlaveTransmit = function;
 }
 
 /* 
@@ -394,11 +394,11 @@ ISR(TWI_vect)
       break;
     case TW_MT_SLA_NACK:  // address sent, nack received
       twi_error = TW_MT_SLA_NACK;
-      twi_stop();
+	  twi_stop();
       break;
     case TW_MT_DATA_NACK: // data sent, nack received
       twi_error = TW_MT_DATA_NACK;
-      twi_stop();
+	  twi_stop();
       break;
     case TW_MT_ARB_LOST: // lost bus arbitration
       twi_error = TW_MT_ARB_LOST;
@@ -490,7 +490,7 @@ ISR(TWI_vect)
       twi_txBufferLength = 0;
       // request for txBuffer to be filled and length to be set
       // note: user must call twi_transmit(bytes, length) to do this
-      twi_onSlaveTransmit();
+	  ha_twi_onSlaveTransmit();
       // if they didn't change buffer & length, initialize it
       if(0 == twi_txBufferLength){
         twi_txBufferLength = 1;

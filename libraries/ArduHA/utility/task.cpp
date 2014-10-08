@@ -46,6 +46,7 @@ void Task::_sleep(uint8_t wdt_period) {
 
 // sleep reducing power consumption
 void Task::sleep(time_t milliseconds) {
+	if (_microsTiming) milliseconds /= 1000;
 	while (milliseconds >= 8000) { _sleep(WDTO_8S); milliseconds -= 8000; }
 	if (milliseconds >= 4000)    { _sleep(WDTO_4S); milliseconds -= 4000; }
 	if (milliseconds >= 2000)    { _sleep(WDTO_2S); milliseconds -= 2000; }
@@ -61,15 +62,18 @@ void Task::sleep(time_t milliseconds) {
 // run task if time to, or sleep if wait==true
 void Task::_run(bool wait)
 {
-	long d= compare(millis());
+	time_t startTime = now();
+	long d= compare(startTime);
 	if (wait)
 	{
 		while (d > 0)
 		{
 			sleep(d);
-			d = compare(millis());
+			startTime = now();
+			d = compare(startTime);
 		}
 	}
+
 	if (d <= 0)
 	{
 		//detach task before execution
@@ -77,7 +81,6 @@ void Task::_run(bool wait)
 		//actual task execution
 		run();
 
-		if (recurrent() && !linked()) trigTask(_interval);
 	}
 }
 
@@ -95,16 +98,15 @@ void Task::loop(bool sleep)
 	}
 }
 
-// returns scheduled execution time
-void Task::trigTask(time_t delay)
+void Task::trigTaskAt(time_t dueTime)
 {
-	_dueTime = millis() + delay;
+	_dueTime = dueTime;
 	relocate();
 }
-void Task::trigTask(time_t delay,time_t interval)
+
+void Task::trigTask(time_t delay)
 {
-	_interval = interval;
-	trigTask(delay);
+	trigTaskAt(now() + delay);
 }
 
 // returns scheduled position against t

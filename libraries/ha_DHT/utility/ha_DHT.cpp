@@ -1,9 +1,42 @@
-/*  ArduHA - ArduixPL - xPL library for Arduino(tm)  Copyright (c) 2012/2014 Mathieu GRENET.  All right reserved.  This file is part of ArduHA / ArduixPL.    ArduixPL is free software: you can redistribute it and/or modify    it under the terms of the GNU General Public License as published by    the Free Software Foundation, either version 3 of the License, or    (at your option) any later version.    ArduixPL is distributed in the hope that it will be useful,    but WITHOUT ANY WARRANTY; without even the implied warranty of    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the    GNU General Public License for more details.    You should have received a copy of the GNU General Public License    along with ArduixPL.  If not, see <http://www.gnu.org/licenses/>.	  Modified 2014-3-14 by Mathieu GRENET 	  mailto:mathieu@mgth.fr	  http://www.mgth.fr*/#
+/*
+  ArduHA - ArduixPL - xPL library for Arduino(tm)
+  Copyright (c) 2012/2014 Mathieu GRENET.  All right reserved.
+
+  This file is part of ArduHA / ArduixPL.
+
+    ArduixPL is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    ArduixPL is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with ArduixPL.  If not, see <http://www.gnu.org/licenses/>.
+
+	  Modified 2014-3-14 by Mathieu GRENET 
+	  mailto:mathieu@mgth.fr
+	  http://www.mgth.fr
+*/
+#
 // Derived from DHT Temperature & Humidity Sensor library for Arduino by Rob Tillaart
 // http://arduino.cc/playground/Main/DHTLib
-#include "../ha_DHT.h"#include "debug.h"#include "util/delay.h"HA_DHTxx::HA_DHTxx(	time_t first,	time_t interval,	uint8_t pin,	byte type,	uint8_t powerPin	) :	_waiting(false),	_pin(pin),	_powerPin(powerPin),	_type(type), Task(first,interval){}// dewPoint function NOAA
+
+#include "../ha_DHT.h"
+#include "debug.h"
+#include "util/delay.h"
+
+HA_DHTxx::HA_DHTxx( uint8_t pin) : _pin(pin)
+{
+	_lastSampling = millis();
+}
+
+// dewPoint function NOAA
 // reference: http://wahiduddin.net/calc/density_algorithms.htm 
-/*
+
 double dewPoint(double celsius, double humidity)
 {
         double RATIO = 373.15 / (273.15 + celsius);  // RATIO was originally named A0, possibly confusing in Arduino context
@@ -16,87 +49,100 @@ double dewPoint(double celsius, double humidity)
         double T = log(VP/0.61078);   // temp var
         return (241.88 * T) / (17.558 - T);
 }
-*/
 
 
-
-
-int HA_DHTxx::read(int& temp, int& hum)
+dhtStatus_t HA_DHTxx::read11(double& temp, double& hum)
 {
-	byte bits[5];
+	byte bits[4];
 
 	// READ VALUES
-	int rv = read(bits);
-	if (rv != DHTLIB_OK) return rv;
+	dhtStatus_t rv = read(bits,true);
+	if (rv != DHT_OK) return rv;
 
 	// CONVERT AND STORE
-	long h = (long)word(bits[0], bits[1]) << 7;  
-	long t = (long)word(bits[2] & 0x7F, bits[3]) << 7;
+	hum = bits[0];
+	temp = bits[2];
 
-	if (_type > 11) { h /= 10; t /= 10; }
-
-	if (bits[2] & 0x80) t = -t;
-	hum = h; 
-	temp = t; 
-	// TEST CHECKSUM
-	uint8_t sum = bits[0] + bits[1] + bits[2] + bits[3] ;
-	//for (byte i = 0; i < 4; i++) sum += bits[i];
-
-	if (sum != bits[4]) return DHTLIB_ERROR_CHECKSUM;
-
-	return DHTLIB_OK;
+	return DHT_OK;
 }
-void HA_DHTxx::run(){	if (_waiting)	{		int t;		int h;		int res = read(t, h);		if (res==DHTLIB_OK)		{			temperature.write(t);			humidity.write(h);		}		_waiting = false;		if (_interval && _powerPin != 0xFF)		{			pinMode(_powerPin, OUTPUT);			digitalWrite(_powerPin, LOW);		}	}	else	{		if (_powerPin != 0xFF)		{			pinMode(_powerPin, OUTPUT);			digitalWrite(_powerPin, HIGH);		}		trigTask((_type == 22) ? 2000 : 1000);		_waiting = true;	}			//double hn = _dht.humidity * exp(
-			//								4892.32623 *
-			//								( 1/(273.15 + _tempNorm) - 1/(273.15 + _dht.temperature) )
-			//							);
-			//_humidityNorm.input(hn);			//tempDewPoint.input(dewPoint(_dht.temperature,_dht.humidity));}// #define TIMEOUT 10000
-// uint16_t for UNO, higher CPU speeds => exceed MAXINT.
-// works for DUE
-// 16 MHz => 10000
-// 84 MHz => 52500
-// 100MHz => 62500
-#define TIMEOUT (F_CPU/1600)
-int HA_DHTxx::readWhile(bool state){	for (unsigned int c = TIMEOUT; c; --c)	if (digitalRead(_pin) != state) return DHTLIB_OK;	return DHTLIB_ERROR_TIMEOUT;}int HA_DHTxx::read(uint8_t bits[5])
+
+
+
+dhtStatus_t HA_DHTxx::read(double& temp, double& hum)
+{
+	byte bits[4];
+
+	// READ VALUES
+	dhtStatus_t rv = read(bits,false);
+	if (rv != DHT_OK) return rv;
+
+	// CONVERT AND STORE
+	hum = (long)word(bits[0], bits[1]) / 10;
+	temp = (long)word(bits[2] & 0x7F, bits[3]) / 10;
+
+	if (bits[2] & 0x80) temp = -temp;
+
+	return DHT_OK;
+}
+
+
+
+
+int HA_DHTxx::readWhile(bool state)
+{
+	int duration;
+	time_t m = micros();
+	while ( (duration=micros()-m)<100)
+	if (digitalRead(_pin) != state) return duration;
+
+	return -1;
+}
+
+
+
+dhtStatus_t HA_DHTxx::read(uint8_t* bits, bool dht11)
 {
 
 	// INIT BUFFERVAR TO RECEIVE DATA
-	uint8_t mask = 128;
-	uint8_t idx = 0;
-
-	// EMPTY BUFFER
-	memset(bits, 0, 5);
+	uint8_t sum = 0;
 
 	// REQUEST SAMPLE
 	pinMode(_pin, OUTPUT);
 	digitalWrite(_pin, LOW);
-	_delay_ms(20);
-	digitalWrite(_pin, HIGH);
-	_delay_us(40);
-	pinMode(_pin, INPUT);
+	if (dht11) _delay_us(18); else _delay_ms(1); // 1 to 10 ms
+	pinMode(_pin, INPUT_PULLUP);
 
 	// GET ACKNOWLEDGE or TIMEOUT
-	if (readWhile(LOW) == DHTLIB_ERROR_TIMEOUT) return DHTLIB_ERROR_TIMEOUT;
+	if (readWhile(HIGH)<0) return DHT_TIMEOUT; // 20-40us
 
-	if (readWhile(HIGH) == DHTLIB_ERROR_TIMEOUT) return DHTLIB_ERROR_TIMEOUT;
+	if (readWhile(LOW) < 0 ) return DHT_TIMEOUT; // 80us
+	if (readWhile(HIGH) < 0 ) return DHT_TIMEOUT; // 80us
 
 	// READ THE OUTPUT - 40 BITS => 5 BYTES
-	while (idx<5)
+	byte value = 0;
+	for (byte i = 0; i < 40; i++)
 	{
-		if (readWhile(LOW) == DHTLIB_ERROR_TIMEOUT) return DHTLIB_ERROR_TIMEOUT;
+		value <<= 1;
 
-		unsigned long t = micros();
+		if (readWhile(LOW) < 0 ) return DHT_TIMEOUT; // 50us
 
-		if (readWhile(HIGH) == DHTLIB_ERROR_TIMEOUT) return DHTLIB_ERROR_TIMEOUT;
+		long duration = readWhile(HIGH);
 
-		if ((micros() - t) > 40) bits[idx] |= mask;
-		mask >>= 1;
-		if (!mask)   // next byte?
+		if ( duration < 0 ) return DHT_TIMEOUT;
+
+		if (duration > 50) value |= 1 ; // 26-28us -> 0; 70us 1
+
+		if ( (i & B11100111) == B111)   // next byte?
 		{
-			mask = 128;
-			idx++;
+			sum += (*bits++ = value);
 		}
 	}
 
-	return DHTLIB_OK;
+	// TEST CHECKSUM
+
+	if (sum != value) return DHT_BADCHECKSUM;
+
+	_lastSampling = millis();
+
+	return DHT_OK;
 }

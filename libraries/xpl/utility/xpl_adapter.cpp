@@ -30,7 +30,8 @@
 xPL_Adapter* xPL_Adapter::_adapter = NULL;
 #endif
 
-xPL_Adapter::xPL_Adapter(time_t interval) :Task(0,interval)
+xPL_Adapter::xPL_Adapter(time_t interval)
+:Task(0,interval)
 {
 #ifndef XPL_ADAPLTER_MULTI
 	_adapter = this;

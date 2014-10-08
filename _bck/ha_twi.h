@@ -38,16 +38,16 @@
   #define TWI_SRX   3
   #define TWI_STX   4
   
-  void twi_init(void);
-  void twi_setAddress(uint8_t);
-  uint8_t twi_readFrom(uint8_t, uint8_t*, uint8_t, uint8_t);
-  uint8_t twi_writeTo(uint8_t, uint8_t*, uint8_t, uint8_t, uint8_t);
-  uint8_t twi_transmit(const uint8_t*, uint8_t);
-  void twi_attachSlaveRxEvent( void (*)(uint8_t*, int) );
-  void twi_attachSlaveTxEvent( void (*)(void) );
-  void twi_reply(uint8_t);
-  void twi_stop(void);
-  void twi_releaseBus(void);
+  void ha_twi_init(void);
+  void ha_twi_setAddress(uint8_t);
+  uint8_t ha_twi_readFrom(uint8_t, uint8_t*, uint8_t, uint8_t);
+  uint8_t ha_twi_writeTo(uint8_t, uint8_t*, uint8_t, uint8_t, uint8_t);
+  uint8_t ha_twi_transmit(const uint8_t*, uint8_t);
+  void ha_twi_attachSlaveRxEvent(void(*)(uint8_t*, int));
+  void ha_twi_attachSlaveTxEvent(void(*)(void));
+  void ha_twi_reply(uint8_t);
+  void ha_twi_stop(void);
+  void ha_twi_releaseBus(void);
 
 #endif
 

@@ -46,54 +46,117 @@ class Task
 
 protected:
 	time_t _dueTime;
-	time_t _interval;
+	bool _microsTiming;
+
 	/// <returns>scheduled position against t (<0 if before, >0 if after)</returns>
 	long compare(time_t t) const;
 
-	/// <summary>to be overriden for task execution</summary>
-	virtual void run() = 0;
 
 public:
 
 	/// <summary>run next task in queue if it's time to</summary>
+	/// <param name="sleep">if true reduce power consuption until next task</param>
 	static void loop(bool sleep=false);
 
 	/// <summary>do nothing for some time, potencialy use power save</summary>
 	/// <param name="delay">delay in ms</param>
-	static void sleep(time_t delay);
+	void sleep(time_t delay);
+
+	/// <summary>to be overriden for task execution</summary>
+	virtual void run() = 0;
+
+	time_t now()
+	{
+		if (_microsTiming)
+			return micros();
+		else
+			return millis();
+	}
+
+	/// <summary>schedule next execution at determined due time</summary>
+	/// <param name="delay">time in ms</param>
+	void trigTaskAt(time_t duetime);
 
 	/// <summary>schedule next execution at determined delay from now</summary>
 	/// <param name="delay">delay in ms</param>
 	void trigTask(time_t delay = 0);
-	/// <summary>schedule next execution and recurring interval</summary>
-	/// <param name="delay">delay in ms</param>
-	/// <param name="interval">interval in ms</param>
-	void trigTask(time_t delay, time_t interval);
 
 	/// <summary>get scheduled execution time</summary>
 	/// <returns>scheduled execution time</returns>
 	time_t dueTime() const { return _dueTime; }
 
-	/// <summary>get interval for recuring tasks</summary>
-	/// <returns>interval in ms</returns>
-	time_t interval() const { return _interval; }
-
-	/// <summary>get task recurrence</summary>
-	/// <returns>true if recurrence scheduled</returns>
-	bool recurrent() { return _interval != TASK_NO_RECURRENCE; }
 
 	/// <remarq>by default new task is not scheduled</remarq>
-	Task() :_interval(TASK_NO_RECURRENCE){}
+	Task(bool microsTiming=false) :_microsTiming(microsTiming){}
 
-	/// <summary>New task to be scheduled and reccuring</summary>
+	/// <summary>New task to be scheduled </summary>
 	/// <param name="delay">schedule first execution in ms from now</param>
-	/// <param name="interval">interval in ms</param>
-	Task(time_t delay, time_t interval = TASK_NO_RECURRENCE) { trigTask(delay, interval); }
+	Task(time_t delay, bool microsTiming=false):_microsTiming(microsTiming) {
+		trigTask(delay);
+	}
 
 	/// <remarks>for Task to be sortable</remarks>
 	/// <param name="task">the task to compare this to</param>
 	/// <returns><0 if this is scheduled before task, >0 if this is scheduled after</returns>
 	int compare(const Task& task) const;
+};
+
+
+class RecurrentTaskFixed : public Task
+{
+	time_t _interval;
+	Task& _task;
+
+	RecurrentTaskFixed(Task& task, time_t interval) :
+		_interval(interval),
+		_task(task)
+		{}
+
+	void run()
+	{
+		_task.run();
+		trigTaskAt(_dueTime + _interval);
+	}
+};
+
+class RecurrentTaskFromStart : public Task
+{
+	time_t _interval;
+	Task& _task;
+
+	RecurrentTaskFromStart(Task& task, time_t interval) :
+		_interval(interval),
+		_task(task)
+	{}
+
+	void run()
+	{
+		trigTask(_interval);
+		_task.run();
+	}
+};
+
+class RecurrentTask : public Task
+{
+	time_t _interval;
+	Task& _task;
+
+	void run()
+	{
+		_task.run();
+		trigTask(_interval);
+	}
+
+public:
+	RecurrentTask(Task& task, time_t interval) :
+		_interval(interval),
+		_task(task)
+	{}
+
+	/// <summary>get interval for recuring tasks</summary>
+	/// <returns>interval in ms</returns>
+	time_t interval() const { return _interval; }
+
 };
 
 #endif

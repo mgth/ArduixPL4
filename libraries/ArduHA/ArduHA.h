@@ -47,15 +47,26 @@ typedef  long time_t;
 #define RAMSIZE RAMEND-0x0FF
 #endif
 #endif
+#undef max
+#undef min
+#undef abs
+template<typename T>
+const T& max(const T& a, const T& b) { return (a > b) ? a : b; }
+template<typename T>
+const T& min(const T& a, const T& b) { return (a < b) ? a : b; }
+template<typename T>
+const T& abs(const T& a) { return (a < 0) ? -a : a; }
 
 template<typename T> T maxValue() { return 0; }
 template<> inline double maxValue<double>()  { return DBL_MAX; }
+template<> inline float maxValue<float>()  { return FLT_MAX; }
 template<> inline int maxValue<int>()  { return INT_MAX; }
 template<> inline unsigned int maxValue<unsigned int>()  { return UINT_MAX; }
 template<> inline long maxValue<long>()  { return LONG_MAX; }
 template<> inline unsigned long maxValue<unsigned long>()  { return ULONG_MAX; }
 template<typename T> T minValue() { return 0; }
 template<> inline double minValue<double>()  { return DBL_MIN; }
+template<> inline float minValue<float>()  { return FLT_MIN; }
 template<> inline int minValue<int>()  { return INT_MIN; }
 template<> inline long minValue<long>()  { return LONG_MIN; }
 

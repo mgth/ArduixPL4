@@ -36,13 +36,10 @@
  /*******************************************************************
 
  *******************************************************************/
-static int gNextPacketPtr = -1;
-static byte Enc28j60Bank;
 
 OptionMacAddress _mac;
 
 int _writePos = -1;
-int _available = -1;
 long _checksum;
 long _headerSum;
 long _udpSum;
@@ -278,122 +275,50 @@ long _udpSum;
 
 #define FULL_SPEED  1   // switch to full-speed SPI for bulk transfers
 
-static void xferSPI (byte data) {
-    SPDR = data;
-    while (!(SPSR&(1<<SPIF)))
-        ;
-}
-
-void enableChip(byte data) {
-    cli();
-    digitalWrite(ENC28J60_PIN, LOW);
-	xferSPI(data);
-}
-
-static void disableChip () {
-    digitalWrite(ENC28J60_PIN, HIGH);
-    sei();
-}
-
 
 // Opérations
 
-static byte readOp (byte op, byte address) {
-    enableChip(op | (address & ADDR_MASK));
-    xferSPI(0x00);
+byte xPL_ENC28J60Adapter::readOp(byte op, byte address) {
+	_spi.chipSelect(op | (address & ADDR_MASK));
+	byte result = _spi.read();
     if (address & 0x80)
-        xferSPI(0x00);
-    byte result = SPDR;
-    disableChip();
+        result = _spi.read();
     return result;
 }
 
-static void writeOp(byte op, byte address, byte data) {
-	enableChip(op | (address & ADDR_MASK));
-	xferSPI(data);
-	disableChip();
-}
-
-// Read buffer
-
-void startReadBuf() {
-	enableChip(ENC28J60_READ_BUF_MEM);
-}
-
-byte readByte() {
-	_available--;
-	xferSPI(0x00);
-	return SPDR;
-}
-
-static void readBuf(word len, byte* data) {
-	while (len--) {
-		*data++ = readByte();
-    }
+void xPL_ENC28J60Adapter::writeOp(byte op, byte address, byte data) {
+	_spi.writeRegister(op | (address & ADDR_MASK),data);
 }
 
 
-static word readWordLE() {
-	word w = (word)readByte();
-	w &= (word)readByte() << 8;
-	return w;
-}
-
-static word readWordBE() {
-	word w;
-	readBuf(sizeof(w),(byte*)&w);
-	return w;
-}
-
-static void drop(word len) {
-	while (len--) {
-		readByte();
-    }
-}
-
-// Write Buffer
-
-
-void startWriteBuf()
-{
-    enableChip(ENC28J60_WRITE_BUF_MEM);
-}
-
-static void writeBuf(word len, const byte* data) {
-	startWriteBuf();
-	while (len--)
-        xferSPI(*data++);
-    disableChip();
-}
-
-static void SetBank (byte address) {
-    if ((address & BANK_MASK) != Enc28j60Bank) {
+void xPL_ENC28J60Adapter::SetBank(byte bank) {
+    if (bank != _bank) {
         writeOp(ENC28J60_BIT_FIELD_CLR, ECON1, ECON1_BSEL1|ECON1_BSEL0);
-        Enc28j60Bank = address & BANK_MASK;
-        writeOp(ENC28J60_BIT_FIELD_SET, ECON1, Enc28j60Bank>>5);
+        _bank = bank;
+        writeOp(ENC28J60_BIT_FIELD_SET, ECON1, _bank);
     }
 }
 
-static byte readRegByte (byte address) {
-    SetBank(address);
+byte xPL_ENC28J60Adapter::readRegByte(byte address) {
+    SetBank((address & BANK_MASK)>>5);
     return readOp(ENC28J60_READ_CTRL_REG, address);
 }
 
-static word readReg(byte address) {
+word xPL_ENC28J60Adapter::readReg(byte address) {
 	return readRegByte(address) + (readRegByte(address+1) << 8);
 }
 
-static void writeRegByte (byte address, byte data) {
+void xPL_ENC28J60Adapter::writeRegByte(byte address, byte data) {
     SetBank(address);
     writeOp(ENC28J60_WRITE_CTRL_REG, address, data);
 }
 
-static void writeReg(byte address, word data) {
+void xPL_ENC28J60Adapter::writeReg(byte address, word data) {
     writeRegByte(address, data);
     writeRegByte(address + 1, data >> 8);
 }
 
-static word readPhyByte (byte address) {
+word xPL_ENC28J60Adapter::readPhyByte(byte address) {
     writeRegByte(MIREGADR, address);
     writeRegByte(MICMD, MICMD_MIIRD);
     while (readRegByte(MISTAT) & MISTAT_BUSY)
@@ -402,29 +327,19 @@ static word readPhyByte (byte address) {
     return readRegByte(MIRD+1);
 }
 
-static void writePhy (byte address, word data) {
+void xPL_ENC28J60Adapter::writePhy(byte address, word data) {
     writeRegByte(MIREGADR, address);
     writeReg(MIWR, data);
     while (readRegByte(MISTAT) & MISTAT_BUSY)
         ;
 }
 
-void initSPI() {
-	pinMode(SS, OUTPUT);
-	digitalWrite(SS, HIGH);
-	pinMode(MOSI, OUTPUT);
-	pinMode(SCK, OUTPUT);
-	pinMode(MISO, INPUT);
-
-	digitalWrite(MOSI, HIGH);
-	digitalWrite(MOSI, LOW);
-	digitalWrite(SCK, LOW);
-
-	SPCR = bit(SPE) | bit(MSTR); // 8 MHz @ 16
-	bitSet(SPSR, SPI2X);
+void xPL_ENC28J60Adapter::setReceiveBufferReadPointer(word ptr) {
+	writeReg(ERXRDPT, ptr);
 }
 
-void filterXpl() {
+
+void xPL_ENC28J60Adapter::filterXpl() {
 	writeRegByte(ERXFCON, ERXFCON_ANDOR | ERXFCON_CRCEN | ERXFCON_PMEN);
 	//	writeReg(EPMO, 0x0000);
 	writeReg(EPMM0, 0x3000); // 0C = 08:00 = IP
@@ -436,7 +351,7 @@ void filterXpl() {
 	writeReg(EPMCS, 0xB4F7);
 }
 
-void filterXplCmnd() {
+void xPL_ENC28J60Adapter::filterXplCmnd() {
 	writeRegByte(ERXFCON, ERXFCON_ANDOR | ERXFCON_CRCEN | ERXFCON_PMEN);
 	//	writeReg(EPMO, 0x0000);
 	writeReg(EPMM0, 0x3000); // 0C = 08:00 = IP
@@ -448,24 +363,24 @@ void filterXplCmnd() {
 	writeReg(EPMCS, 0xE325);
 }
 
-void startWrite(int pos=0)
+void xPL_ENC28J60Adapter::startWrite(int pos)
 {
-	disableChip();
+	_spi.chipUnselect();
 	writeReg(EWRPT, pos + TXSTART_INIT + 1); // TODO : dont know why i need +1
 	_writePos = pos;
-	enableChip(ENC28J60_WRITE_BUF_MEM);
+	_spi.chipSelect(ENC28J60_WRITE_BUF_MEM);
 }
 
-void printByte(byte b)
+void xPL_ENC28J60Adapter::printByte(byte b)
 {
 	if (_writePos % 2) _checksum += b;
 	else _checksum += ((long)b) << 8;
 
-	xferSPI(b);
+	_spi.transfer(b);
 	_writePos++;
 }
 
-word getChecksum(long sum)
+word xPL_ENC28J60Adapter::getChecksum(long sum)
 {
 	while (sum >> 16)
 		sum = (sum & 0xffff) + (sum >> 16);
@@ -473,20 +388,19 @@ word getChecksum(long sum)
 	return ~sum;
 }
 
-void printBytes(byte b, byte count)
+void xPL_ENC28J60Adapter::printBytes(byte b, byte count)
 {
 	for (byte i = 0; i<count; i++) printByte(b);
 }
 
-void printWord(word w)
+void xPL_ENC28J60Adapter::printWord(word w)
 { 
 	printByte((char)(w>>8));
 	printByte((char)w);
 }
 
-void writeHeader()
+void xPL_ENC28J60Adapter::writeHeader()
 {
-
 	startWrite();
 
 // Ethernet
@@ -528,25 +442,21 @@ void writeHeader()
 
 	_udpSum = _checksum;
 
-	disableChip();
+	_spi.chipUnselect();
 }
 
-void initialize() {
+void xPL_ENC28J60Adapter::initialize() {
 	_writePos = -1;
-
-	if (bitRead(SPCR, SPE) == 0) initSPI();
-
-	pinMode(ENC28J60_PIN, OUTPUT);
-	disableChip();
 
 	writeOp(ENC28J60_SOFT_RESET, 0, ENC28J60_SOFT_RESET);
 	delay(2); // errata B7/2
-	while (!readOp(ENC28J60_READ_CTRL_REG, ESTAT) & ESTAT_CLKRDY)
+//	while (!readOp(ENC28J60_READ_CTRL_REG, ESTAT) & ESTAT_CLKRDY)
+	while (!readRegByte(ESTAT) & ESTAT_CLKRDY)
 		;
 
-	gNextPacketPtr = RXSTART_INIT;
+	_nextPacketPtr = RXSTART_INIT;
 	writeReg(ERXST, RXSTART_INIT);
-	writeReg(ERXRDPT, RXSTART_INIT);
+	setReceiveBufferReadPointer(RXSTART_INIT);
 	writeReg(ERXND, RXSTOP_INIT);
 	writeReg(ETXST, TXSTART_INIT);
 	writeReg(ETXND, TXSTOP_INIT);
@@ -596,7 +506,6 @@ void xPL_ENC28J60Adapter::begin()
 		initialize();
 		init = true;
 	}
-
 }
 
 bool xPL_ENC28J60Adapter::start() {
@@ -624,7 +533,7 @@ bool xPL_ENC28J60Adapter::send() {
 	printWord(len - 34);  // UDP lenght
 	printWord(getChecksum(udpSum + 2*(len - 34)));
 
-	disableChip();
+	_spi.chipUnselect();
 
 	writeReg(ETXND, TXSTART_INIT + len);
 
@@ -642,32 +551,29 @@ size_t xPL_ENC28J60Adapter::write(uint8_t val) {
 /////////////////////////////////////////////////////////////////////
 // Reading
 /////////////////////////////////////////////////////////////////////
-void setReadPos(int pos) { writeReg(ERDPT, pos); }
+void xPL_ENC28J60Adapter::setReadPos(int pos) { writeReg(ERDPT, pos); }
 
-void packetRelease() {
-	if (gNextPacketPtr - 1 > RXSTOP_INIT)
-		writeReg(ERXRDPT, RXSTOP_INIT);
-	else
-		writeReg(ERXRDPT, gNextPacketPtr - 1);
+void xPL_ENC28J60Adapter::packetRelease() {
+	setReceiveBufferReadPointer(min(RXSTOP_INIT, _nextPacketPtr - 1));
 	writeOp(ENC28J60_BIT_FIELD_SET, ECON2, ECON2_PKTDEC);
 
 	_available = -1;
 }
 
-word packetReceive() {
+word xPL_ENC28J60Adapter::packetReceive() {
 	word len = 0;
 	_available = -1;
 
 	if (readRegByte(EPKTCNT) > 0)
 	{
-		writeReg(ERDPT, gNextPacketPtr);
+		writeReg(ERDPT, _nextPacketPtr);
 
-		enableChip(ENC28J60_READ_BUF_MEM);
+		_spi.chipSelect(ENC28J60_READ_BUF_MEM);
 
-		gNextPacketPtr = readWordBE();
-		len = readWordBE() -4; //byteCount remove the CRC count
+		_nextPacketPtr = _spi.readWordBE();
+		len = _spi.readWordBE() -4; //byteCount remove the CRC count
 
-		if ((readWordBE() & 0x80) == 0) // status
+		if ((_spi.readWordBE() & 0x80) == 0) // status
 		{
 			len = 0;
 			packetRelease();
@@ -675,43 +581,39 @@ word packetReceive() {
 		else
 			_available = len;
 
-		disableChip();
+		_spi.chipUnselect();
 	}
 	return len;
 }
 
 int xPL_ENC28J60Adapter::available()
 {
-	if (_available < 0)
+	if (_available >= 0) return _available;
+	
+	begin(); // TODO : should that occure all the time
+	word len = packetReceive();
+	if (len)
 	{
-		begin();
-		word len = packetReceive();
-		if (len)
+		if (_available>0)
 		{
-			if (_available>0)
-			{
-				enableChip(ENC28J60_READ_BUF_MEM);
-				drop(42);
-				disableChip();
-			}
-			else
-			{
-				packetRelease();
-				return 0;
-			}
+			_spi.readRegister(ENC28J60_READ_BUF_MEM,NULL,42);
 		}
-		else return 0;
+		else
+		{
+			packetRelease();
+			return 0;
+		}
 	}
-	return _available;
+	else return 0;
 }
 
 int xPL_ENC28J60Adapter::read()
 {
 	if (available())
 	{
-		enableChip(ENC28J60_READ_BUF_MEM);
-		byte b = readByte();
-		disableChip();
+		_spi.chipSelect(ENC28J60_READ_BUF_MEM);
+		byte b = _spi.transfer(0x00);
+		_spi.chipUnselect();
 		return b;
 	}
 	return -1;
@@ -722,10 +624,9 @@ int xPL_ENC28J60Adapter::peek()
 	if (available())
 	{
 		writeOp(ENC28J60_BIT_FIELD_CLR, ECON2, ECON2_AUTOINC);
-		enableChip(ENC28J60_READ_BUF_MEM);
-		xferSPI(0x00);
-		byte b = SPDR;
-		disableChip();
+		_spi.chipSelect(ENC28J60_READ_BUF_MEM);
+		byte b = _spi.transfer(0x00);
+		_spi.chipUnselect();
 		writeOp(ENC28J60_BIT_FIELD_SET, ECON2, ECON2_AUTOINC);
 		return b;
 	}

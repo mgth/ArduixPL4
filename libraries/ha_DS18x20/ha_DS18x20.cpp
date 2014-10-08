@@ -20,7 +20,7 @@ https://github.com/milesburton/Arduino-Temperature-Control-Library
 #define RECALLSCRATCH   0xB8  // Reload from last known
 #define READPOWERSUPPLY 0xB4  // Determine if device needs parasite power
 #define ALARMSEARCH     0xEC  // Query bus for devices with an alarm condition
-OneWire HA_DS18x20::_wire(ONE_WIRE_BUS);bool HA_DS18x20::_parasite = false;time_t HA_DS18x20::_globalInterval = maxValue<time_t>();typedef enum scratch {TEMP_LSB,
+typedef enum scratch {TEMP_LSB,
 TEMP_MSB,
 HIGH_ALARM_TEMP,
 LOW_ALARM_TEMP,
@@ -34,28 +34,40 @@ bool validAddress(const uint8_t* addr)
 	uint8_t crc = 0;
 	for (byte i = 0; i < 7; i++) crc = _crc_ibutton_update(crc, addr[i]);
 	return (crc == addr[7]);
-}void HA_DS18x20::setResolution(uint8_t resolution){	if (_addr[0] == DS18S20MODEL) resolution = 12;
+}void HA_DS18x20::setResolution(uint8_t resolution){	if (_addr && _addr[0] == DS18S20MODEL) resolution = 12;
 	_configuration = ((resolution-9) << 5) | B11111;}bool HA_DS18x20::readPowerSupply()
 {
-	if (_wire.request(READPOWERSUPPLY,_addr))
+	if (_wire.wire.request(READPOWERSUPPLY, _addr))
 	{
-		uint8_t power = _wire.read_bit();
+		uint8_t power = _wire.wire.read_bit();
 		return power == 0;
 	}
-}HA_DS18x20* HA_DS18x20::getByAddr(uint8_t addr[8]){	foreach(HA_DS18x20, d)	{		if (d->_addr == addr)		{			return d;		}	}	return NULL;}void HA_DS18x20::discover(uint8_t resolution){	OneWireSearch s(_wire);
+}HA_DS18x20* HA_DS18x20::getByAddr(uint8_t addr[8]){	foreach(HA_DS18x20, d)	{		if (d->_addr == addr)		{			return d;		}	}	return NULL;}void HA_DS18x20_Wire::discover(uint8_t resolution){	OneWireSearch s(wire);
 
 	while (s.search())
 	{
 		if (validAddress(s.addr()))
 		{
-			new HA_DS18x20(s.addr(), resolution);
+			new HA_DS18x20(*this, s.addr(), resolution);
 		}
 	}
-}HA_DS18x20::HA_DS18x20(uint8_t* addr, uint8_t resolution){	if (addr)		memcpy(_addr, addr, 8);	else		memset(_addr, 0, 8);	if (!_parasite && readPowerSupply()) _parasite = true;
+}HA_DS18x20::HA_DS18x20(HA_DS18x20_Wire& wire, uint8_t* addr, uint8_t resolution):_wire(wire){	if (addr)		memcpy(_addr, addr, 8);	else		memset(_addr, 0, 8);	if (!wire.parasite && readPowerSupply()) wire.parasite = true;
 
-	setResolution(resolution);	_pendingRequest = false;}int16_t HA_DS18x20::read(){	uint8_t data[8];	_wire.request(READSCRATCH,_addr);	uint8_t crc = 0;	for (byte i = 0; i < 8; ++i)	{		data[i] = _wire.read();		crc = _crc_ibutton_update(crc, data[i]);	}	//check crc, if not ok sensor might not be there	if (crc != _wire.read()) return SHRT_MAX;	//_wire.reset();	//check if configuration is ok	if (data[CONFIGURATION] != 0xFF && data[CONFIGURATION] != _configuration)	{		_wire.request(WRITESCRATCH,_addr);		_wire.write_bytes(&data[HIGH_ALARM_TEMP],3);		_wire.request(COPYSCRATCH, _addr); //, _parasite	}	//_wire.reset();	int16_t raw = (((int16_t)data[TEMP_LSB]) << 3) | (((int16_t)(data[TEMP_MSB])) << 11);	if (data[CONFIGURATION] == 0xFF)
+	setResolution(resolution);	_pendingRequest = false;}temperature_t HA_DS18x20_Wire::read(byte* addr, byte configuration){	uint8_t data[8];	wire.request(READSCRATCH,addr);	uint8_t crc = 0;	for (byte i = 0; i < 8; ++i)	{		data[i] = wire.read();		crc = _crc_ibutton_update(crc, data[i]);	}	//check crc, if not ok sensor might not be there	if (crc != wire.read()) return  maxValue<temperature_t>();	//_wire.reset();	int16_t raw = ((int16_t)data[TEMP_LSB]) | (((int16_t)(data[TEMP_MSB])) << 8);	/*	if (data[CONFIGURATION] == 0xFF)
 		raw = ((raw & 0xfff0) << 3) - 16 + (((data[COUNT_PER_C] - data[COUNT_REMAIN]) << 7) / data[COUNT_PER_C]);
+*/
+	//check if configuration is ok	if (addr && data[CONFIGURATION] != 0xFF && data[CONFIGURATION] != configuration)	{		data[CONFIGURATION] = configuration;		wire.request(WRITESCRATCH, addr);		wire.write_bytes(&data[HIGH_ALARM_TEMP], 3);		wire.request(COPYSCRATCH, addr); //, _parasite	}	//_wire.reset();#ifdef HA_FLOAT
+	return ((temperature_t)raw) / 16.0;
+#else
+	raw *= 5; // raw = (raw * 100) >> 4	raw /= 2; 	raw *= 5; 	raw /= 2;  	return raw;#endif}bool HA_DS18x20::startConversion(time_t interval){	if (_wire.wire.request(STARTCONVO, _addr))	{		_pendingRequest = true;		time_t duration = conversionDuration();		trigTask(duration, interval);		return true;	}	return false;}time_t HA_DS18x20_Wire::startConversion(){	time_t maxDuration = 0;	if (HA_DS18x20::AutoList<HA_DS18x20>::count() == 0) new HA_DS18x20(*this, NULL);	foreach(HA_DS18x20, sensor)	{		// we will ignore sensors that are already triggered		if (!sensor->_pendingRequest)		{			time_t duration = sensor->conversionDuration();			// first found sleeping sensor will trigger global convertion			if (!maxDuration) { wire.request(STARTCONVO, NULL); }			if (maxDuration<duration) maxDuration=duration;			// each sleeping shoul now 			sensor->_pendingRequest = true;			sensor->trigTask(duration);		}	}	return maxDuration;}time_t HA_DS18x20::conversionDuration(){	return 750 / (1 << (3 - (_configuration >> 5)));}void HA_DS18x20::run(){		if (_pendingRequest)	{		temperature_t t = read();		_pendingRequest = false;		if ( t < maxValue<temperature_t>() ) temperature.write(t);		else temperature.error();		if (recurrent())		{			time_t interval = _interval;			time_t duration = conversionDuration();			if (interval > duration) interval -= duration;			else interval = 0;		}	}	else
+	{
+		if (!startConversion(_interval))
+		{
+			temperature.error();
+			Serial.print('.');
+			if (recurrent()) trigTask(_interval);
+		}
+	}
+
 	
-	_pendingRequest = false;
-		return raw;}bool HA_DS18x20::startConversion(){	if (_wire.request(STARTCONVO, _addr))	{		_pendingRequest = true;		return true;	}	return false;}bool HA_DS18x20::startGlobalConversion(time_t interval){	bool q = false;	foreach(HA_DS18x20, sensor)	{		if (!sensor->_pendingRequest)		{			if (!q) {				_wire.request(STARTCONVO, NULL); q = true;			}			sensor->_pendingRequest = true;			sensor->trigTask(sensor->conversionDuration(),interval);		}	}	return q;}time_t HA_DS18x20::conversionDuration(){	return 750 / (1 << (3 - (_configuration >> 5)));}void HA_DS18x20::run(){	if (_pendingRequest)	{		int16_t raw = read();		if (raw!=SHRT_MAX) temperature.write(raw);		_pendingRequest = false;		foreach(HA_DS18x20, sensor)		{			if (sensor->_pendingRequest) return;		}	}	else if (startConversion())
-	{		trigTask(conversionDuration());		return;		startGlobalConversion();	}}
+}

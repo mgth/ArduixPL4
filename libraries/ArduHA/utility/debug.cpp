@@ -30,7 +30,7 @@ LiquidCrystal_I2C lcd(0x20,16,4);
 
 bool debug_flag=false;
 
-#ifdef __avr__
+#if 1
 uint8_t * heapptr, * stackptr;
 void check_mem() {
   stackptr = (uint8_t *)malloc(4);          // use stackptr temporarily

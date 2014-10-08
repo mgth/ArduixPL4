@@ -46,6 +46,35 @@ public:
 		if (key == _key) { store = value; return true; }
 		return false;
 	}
+
+	int count(char separator=',') const {
+		int pos = 0;
+		int c = 0;
+		while (pos > -1)
+		{
+			pos = value.indexOf(separator, pos);
+			if (pos > -1) pos++;
+			c++;
+		}
+		return c;
+	}
+
+	String val(byte n, char separator=',') const
+	{
+		int pos = 0;
+		int c = 0;
+		while (pos > -1 && c<n)
+		{
+			pos = value.indexOf(separator, pos);
+			if (pos > -1) pos++;
+			c++;
+		}
+
+		int end = value.indexOf(separator, pos);
+
+		if (end < 0) return value.substring(pos);
+		else return value.substring(pos, end - 1);
+	}
 };
 
 class xPL_MessageParser : public AutoList<xPL_MessageParser>

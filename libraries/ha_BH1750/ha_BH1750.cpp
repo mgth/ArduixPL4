@@ -25,7 +25,46 @@
 
 #include "ha_BH1750.h"
 
-HA_BH1750::HA_BH1750(	time_t first,	time_t interval,	int addr,	byte mode,	bool continuous,	byte mt	) : I2C(addr), Task(first,interval){	_waiting=false;	setMode(mode, continuous, mt);}time_t HA_BH1750::_waitTime(){	time_t delay = ((_mode & 0x3) == BH_LRES) ? BH_L_TIME : BH_H_TIME;	if (_mt != BH_DEFAULT_MT)	{		delay *= _mt;		delay /= BH_DEFAULT_MT;	}	return delay;}void HA_BH1750::setMode(byte mode, bool continuous, byte mt) {	_mt=(mt<32)?32:(mt>254)?254:mt;	_mode=(continuous)?BH_CONTINUOUS:BH_ONE_TIME;	if (!mode) _mode |= BH_LRES;	else if (mode == 2) _mode |= BH_HRES_2;}void HA_BH1750::run(){	if (!_waiting)
+
+HA_BH1750::HA_BH1750(
+	time_t first,
+	time_t interval,
+	int addr,
+	byte mode,
+	bool continuous,
+	byte mt
+	) : I2C(addr), Task(first,interval)
+{
+	_waiting=false;
+	setMode(mode, continuous, mt);
+}
+
+time_t HA_BH1750::_waitTime()
+{
+	time_t delay = ((_mode & 0x3) == BH_LRES) ? BH_L_TIME : BH_H_TIME;
+	if (_mt != BH_DEFAULT_MT)
+	{
+		delay *= _mt;
+		delay /= BH_DEFAULT_MT;
+	}
+	return delay;
+}
+
+void HA_BH1750::setMode(byte mode, bool continuous, byte mt) {
+
+	_mt=(mt<32)?32:(mt>254)?254:mt;
+
+	_mode=(continuous)?BH_CONTINUOUS:BH_ONE_TIME;
+
+	if (!mode) _mode |= BH_LRES;
+	else if (mode == 2) _mode |= BH_HRES_2;
+
+}
+
+
+void HA_BH1750::run()
+{
+	if (!_waiting)
 	{
 		uint8_t data[] = { BH_POWER_ON, BH_MT_H | (_mt >> 5), BH_MT_L | (_mt & 0x1F) };
 		send(data,3);
@@ -55,4 +94,4 @@
 		else 
 			trigTask(_waitTime());
 	}
-}
+}
