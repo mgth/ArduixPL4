@@ -65,7 +65,7 @@ class Heater :public Filter<temperature_t>
 
 	void calc()
 	{
-		temperature_t hotLayerTemp = _temperature;
+		temperature_t hotWaterTemp = _temperature;
 
 		/**/
 		temperature_t coldLayerTemp = _temperature;
@@ -152,7 +152,7 @@ void setup()
 		//	.link(new Calibration2ndOrder_Shifted(-7539, 192, 19))->out
 			.link(&heater)
 			;
-		s->startConversion(1000);
+		(new RecurrentTask(*s, 1000))->trigTask();
 	}
 
 

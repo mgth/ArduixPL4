@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="WaterHeater.ino" />
+    <None Include="..\Oled\Oled.ino" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\libraries\ha_DS18x20\ha_DS18x20.h">
@@ -36,6 +37,9 @@
       <Filter>Fichiers sources</Filter>
     </ClCompile>
     <ClCompile Include="..\libraries\ArduHA\utility\ha_1wire.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libraries\ArduHA\utility\task.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
   </ItemGroup>
