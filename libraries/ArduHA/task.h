@@ -49,7 +49,9 @@ protected:
 	bool _microsTiming;
 
 	/// <returns>scheduled position against t (<0 if before, >0 if after)</returns>
-	long compare(time_t t) const;
+	/// <param name="t">time in ms or us</param>
+	/// <param name="microsTiming">if true delay is us</param>
+	long compare(time_t t, bool microsTiming = false) const;
 
 
 public:
@@ -65,21 +67,17 @@ public:
 	/// <summary>to be overriden for task execution</summary>
 	virtual void run() = 0;
 
-	time_t now()
-	{
-		if (_microsTiming)
-			return micros();
-		else
-			return millis();
-	}
+	bool microsTiming();
 
 	/// <summary>schedule next execution at determined due time</summary>
-	/// <param name="delay">time in ms</param>
-	void trigTaskAt(time_t duetime);
+	/// <param name="duetime">time in ms or us</param>
+	/// <param name="microsTiming">if true duetime is us</param>
+	void trigTaskAt(time_t duetime, bool microsTiming = false);
 
 	/// <summary>schedule next execution at determined delay from now</summary>
 	/// <param name="delay">delay in ms</param>
-	void trigTask(time_t delay = 0);
+	/// <param name="microsTiming">if true delay is us</param>
+	void trigTask(time_t delay = 0, bool microsTiming = false);
 
 	/// <summary>get scheduled execution time</summary>
 	/// <returns>scheduled execution time</returns>

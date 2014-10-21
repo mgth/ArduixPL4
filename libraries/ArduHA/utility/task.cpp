@@ -59,18 +59,34 @@ void Task::sleep(time_t milliseconds) {
 	if (milliseconds >= 16)      { _sleep(WDTO_15MS); milliseconds -= 15; }
 }
 
+bool Task::microsTiming()
+{
+	if (_microsTiming) return true;
+	time_t delais = _dueTime - millis();
+	if (delais > (2 ^ 32 / 1000)) return false;
+	_dueTime *= 1000;
+	_microsTiming = true;
+	return true;
+}
+
 // run task if time to, or sleep if wait==true
 void Task::_run(bool wait)
 {
-	time_t startTime = now();
-	long d= compare(startTime);
-	if (wait)
+	long d;
+	if (!microsTiming())
 	{
-		while (d > 0)
-		{
+		d = compare(millis(),false);
+		if (wait) while (d > 0)	{
 			sleep(d);
-			startTime = now();
-			d = compare(startTime);
+			d = compare(millis(),false);
+		}
+	}
+	else
+	{
+		d = compare(micros(),true);
+		if (wait) while (d > 0) {
+			if (d>15000) sleep(d/1000);
+			d = compare(micros(),true);
 		}
 	}
 
@@ -80,7 +96,6 @@ void Task::_run(bool wait)
 		unlink();
 		//actual task execution
 		run();
-
 	}
 }
 
@@ -98,27 +113,40 @@ void Task::loop(bool sleep)
 	}
 }
 
-void Task::trigTaskAt(time_t dueTime)
+void Task::trigTaskAt(time_t dueTime, bool microsTiming)
 {
+	_microsTiming = microsTiming;
 	_dueTime = dueTime;
 	relocate();
 }
 
-void Task::trigTask(time_t delay)
+void Task::trigTask(time_t delay, bool microsTiming)
 {
-	trigTaskAt(now() + delay);
+	trigTaskAt(microsTiming?micros():millis() + delay, microsTiming);
 }
 
 // returns scheduled position against t
-long Task::compare(time_t t) const
+long Task::compare(time_t t, bool microsTiming) const
 {
-	return _dueTime - t;
+	if (microsTiming)
+	{
+		if (_microsTiming)
+			return _dueTime - t;
+		else
+			return _dueTime - (millis()+(t-micros())/1000);
+	}
+	else
+	{
+		if (_microsTiming)
+			return millis()+(_dueTime-micros())/1000 - t;
+		else
+			return _dueTime - t;
+	}
 }
 
 //for Task to be sortable
 int Task::compare(const Task& task) const
 {
-	long diff = compare(task.dueTime());
-	return sgn(diff);
+	long diff = compare(task.dueTime(), task._microsTiming);
 }
 

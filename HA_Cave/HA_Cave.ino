@@ -17,12 +17,16 @@ HA_DHT<DHT11> sensorDn(7);
 
 RecurrentTask t1(sensorUp, 5000);
 RecurrentTask t2(sensorDn, 5000);
-
-void callb(char* topic, byte* payload, unsigned int length) {
-	// handle message arrived
-}
+void callb(char* topic, byte* payload, unsigned int length);
 EthernetClient ethClient;
 PubSubClient client(server, 1883, callb, ethClient);
+void callb(char* topic, byte* payload, unsigned int length) {
+	byte* p = (byte*)malloc(length);
+	memcpy(p, payload, length);
+	client.publish("outTopic", p, length);
+	// Free the memory
+	free(p);
+}
 
 class MQTT : Filter<double>
 {
@@ -56,4 +60,5 @@ void setup()
 void loop()
 {
 	Task::loop();
+	client.loop();
 }
