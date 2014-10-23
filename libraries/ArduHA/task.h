@@ -85,7 +85,7 @@ public:
 
 
 	/// <remarq>by default new task is not scheduled</remarq>
-	Task(bool microsTiming=false) :_microsTiming(microsTiming){}
+	Task() :_microsTiming(true){}
 
 	/// <summary>New task to be scheduled </summary>
 	/// <param name="delay">schedule first execution in ms from now</param>
@@ -99,43 +99,10 @@ public:
 	int compare(const Task& task) const;
 };
 
-
-class RecurrentTaskFixed : public Task
-{
-	time_t _interval;
-	Task& _task;
-
-	RecurrentTaskFixed(Task& task, time_t interval) :
-		_interval(interval),
-		_task(task)
-		{}
-
-	void run()
-	{
-		_task.run();
-		trigTaskAt(_dueTime + _interval);
-	}
-};
-
-class RecurrentTaskFromStart : public Task
-{
-	time_t _interval;
-	Task& _task;
-
-	RecurrentTaskFromStart(Task& task, time_t interval) :
-		_interval(interval),
-		_task(task)
-	{}
-
-	void run()
-	{
-		trigTask(_interval);
-		_task.run();
-	}
-};
-
+/// <summary>Reccuring task at interval from last task ending</summary>
 class RecurrentTask : public Task
 {
+protected:
 	time_t _interval;
 	Task& _task;
 
@@ -156,5 +123,34 @@ public:
 	time_t interval() const { return _interval; }
 
 };
+
+/// <summary>Reccuring task at fixed interval from initial execution</summary>
+class RecurrentTaskFixed : public RecurrentTask
+{
+	RecurrentTaskFixed(Task& task, time_t interval) :
+		RecurrentTask(task, interval)
+	{}
+
+	void run()
+	{
+		_task.run();
+		trigTaskAt(_dueTime + _interval);
+	}
+};
+
+/// <summary>Reccuring task at interval from last execution</summary>
+class RecurrentTaskFromStart : public RecurrentTask
+{
+	RecurrentTaskFromStart(Task& task, time_t interval) :
+		RecurrentTask(task, interval)
+	{}
+
+	void run()
+	{
+		trigTask(_interval);
+		_task.run();
+	}
+};
+
 
 #endif

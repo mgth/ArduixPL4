@@ -47,7 +47,7 @@ public:
 	bool parasite;
 	OneWire& wire ;
 
-	HA_DS18x20_Wire(OneWire& w) :wire(w) {};
+	HA_DS18x20_Wire(OneWire w) :wire(w) {};
 
 	void discover(uint8_t resolution = 12);
 

@@ -26,6 +26,8 @@
 #define I2C_H
 
 #include <inttypes.h>
+
+
 class I2C
 {
 

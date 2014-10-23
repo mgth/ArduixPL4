@@ -3,7 +3,7 @@
 #include "PubSubClient.h"
 
 #include <arduha.h>
-#include <wire.h>
+//#include <wire.h>
 
 #include "ha_DHT.h"
 

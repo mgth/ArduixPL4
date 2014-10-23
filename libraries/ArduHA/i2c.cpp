@@ -22,13 +22,16 @@
 	  http://www.mgth.fr
 */
 #include "i2c.h"
+//#include "utility/twi.h"
 #include "utility/twi.h"
 #include "avr/delay.h"
 #include "arduha.h"
+
+
 I2C::I2C(uint8_t addr) :_addr(addr){ 
 }
-void I2C::init()
-{
+
+void I2C::init(){
 	twi_init();
 }
 

@@ -13,15 +13,16 @@
 xPL_ENC28J60Adapter adapter;
 xPL_Serial debugAdapter;
 
-HA_DHTxx dht22(0,999,6,22);
+HA_DHT<DHT22> dht22(6);
 HA_BMP085 bmp085(0,998);
 HA_BH1750 bh1750(0, 997,0x23,2,false);
 
-OneWire wire(7);
+//OneWire wire(7);
+HA_DS18x20_Wire DS_Wire(OneWire(7));
 
-_SETUP()
+void setup()
 {
-	HA_DS18x20::discover(wire,12);
+	DS_Wire.discover(12);
 
 	int i = 0;
 	foreach(HA_DS18x20, s)
@@ -79,9 +80,9 @@ _SETUP()
 	DBGLN("tasks:", Task::count());
 }
 
-_LOOP()
+void loop()
 {
 //	DBG('.'); delay(100);
 	Task::loop(false);
 }
-_END
+
