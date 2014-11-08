@@ -27,13 +27,11 @@
 
 
 HA_BH1750::HA_BH1750(
-	time_t first,
-	time_t interval,
 	int addr,
 	byte mode,
 	bool continuous,
 	byte mt
-	) : I2C(addr), Task(first,interval)
+	) : I2C(addr)
 {
 	_waiting=false;
 	setMode(mode, continuous, mt);

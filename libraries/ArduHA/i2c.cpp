@@ -21,11 +21,10 @@
 	  mailto:mathieu@mgth.fr
 	  http://www.mgth.fr
 */
+#include "arduha.h"
 #include "i2c.h"
-//#include "utility/twi.h"
 #include "utility/twi.h"
 #include "avr/delay.h"
-#include "arduha.h"
 
 
 I2C::I2C(uint8_t addr) :_addr(addr){ 

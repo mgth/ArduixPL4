@@ -39,18 +39,20 @@ https://code.google.com/p/narcoleptic/
 class Task
 	:public LinkedList<Task>
 {
-
+	/// <summary>sleep using power reduction</summary>
 	static void _sleep(uint8_t wdt_period);
 	/// <summary>internal task execution engine</summary>
 	void _run(bool sleep=false);
 
 protected:
+	/// <summary>scheduled execution time</summary>
 	time_t _dueTime;
+	/// <summary>true if dueTime is &micro;s based</summary>
 	bool _microsTiming;
 
 	/// <returns>scheduled position against t (<0 if before, >0 if after)</returns>
-	/// <param name="t">time in ms or us</param>
-	/// <param name="microsTiming">if true delay is us</param>
+	/// <param name="t">time in ms or &micro;s</param>
+	/// <param name="microsTiming">if true delay is &micro;s</param>
 	long compare(time_t t, bool microsTiming = false) const;
 
 
@@ -67,20 +69,41 @@ public:
 	/// <summary>to be overriden for task execution</summary>
 	virtual void run() = 0;
 
+	/// <summary>Timing in ms or &micro;s</summary>
+	/// <returns>true if &micro;s</returns>
 	bool microsTiming();
 
 	/// <summary>schedule next execution at determined due time</summary>
-	/// <param name="duetime">time in ms or us</param>
-	/// <param name="microsTiming">if true duetime is us</param>
+	/// <param name="duetime">time in ms or &micro;s</param>
+	/// <param name="microsTiming">if true duetime is &micro;s</param>
 	void trigTaskAt(time_t duetime, bool microsTiming = false);
 
 	/// <summary>schedule next execution at determined delay from now</summary>
-	/// <param name="delay">delay in ms</param>
-	/// <param name="microsTiming">if true delay is us</param>
+	/// <param name="delay">delay in ms ou &micro;s</param>
+	/// <param name="microsTiming">if true delay is &micro;s</param>
 	void trigTask(time_t delay = 0, bool microsTiming = false);
+
+	/// <summary>schedule reccurent execution at determined delay from now</summary>
+	/// <param name="delay">delay in ms or &micro;s</param>
+	/// <param name="interval">interval in ms or &micro;s</param>
+	/// <param name="microsTiming">if true delay is &micro;s</param>
+	Task* trigReccurent(time_t delay, time_t interval, bool microsTiming = false);
+
+	/// <summary>schedule reccurent execution at determined delay from now</summary>
+	/// <param name="delay">delay in ms or &micro;s</param>
+	/// <param name="interval">interval in ms or &micro;s</param>
+	/// <param name="microsTiming">if true delay is &micro;s</param>
+	Task* trigReccurentFixed(time_t delay, time_t interval, bool microsTiming = false);
+
+	/// <summary>schedule reccurent execution  from last execution at determined delay from now</summary>
+	/// <param name="delay">delay in ms or &micro;s</param>
+	/// <param name="interval">interval in ms or &micro;s</param>
+	/// <param name="microsTiming">if true delay is &micro;s</param>
+	Task* trigReccurentFromStart(time_t delay, time_t interval, bool microsTiming = false);
 
 	/// <summary>get scheduled execution time</summary>
 	/// <returns>scheduled execution time</returns>
+	/// <remarq>see microTiming() for time unit (ms or &micro;s)</remarq>
 	time_t dueTime() const { return _dueTime; }
 
 
@@ -93,7 +116,7 @@ public:
 		trigTask(delay);
 	}
 
-	/// <remarks>for Task to be sortable</remarks>
+	/// <summary>for Task to be sortable</summary>
 	/// <param name="task">the task to compare this to</param>
 	/// <returns><0 if this is scheduled before task, >0 if this is scheduled after</returns>
 	int compare(const Task& task) const;
@@ -103,51 +126,51 @@ public:
 class RecurrentTask : public Task
 {
 protected:
+	bool _microTiming;
 	time_t _interval;
 	Task& _task;
 
 	void run()
 	{
 		_task.run();
-		trigTask(_interval);
+		trigTask(_interval, _microsTiming);
 	}
 
 public:
-	RecurrentTask(Task& task, time_t interval) :
+	RecurrentTask(Task& task, time_t interval, bool microsTiming = false) :
 		_interval(interval),
 		_task(task)
 	{}
 
 	/// <summary>get interval for recuring tasks</summary>
-	/// <returns>interval in ms</returns>
+	/// <returns>interval in ms or &micro;s </returns>
 	time_t interval() const { return _interval; }
-
 };
 
 /// <summary>Reccuring task at fixed interval from initial execution</summary>
 class RecurrentTaskFixed : public RecurrentTask
 {
-	RecurrentTaskFixed(Task& task, time_t interval) :
-		RecurrentTask(task, interval)
+	RecurrentTaskFixed(Task& task, time_t interval, bool microsTiming = false) :
+		RecurrentTask(task, interval, microsTiming)
 	{}
 
 	void run()
 	{
 		_task.run();
-		trigTaskAt(_dueTime + _interval);
+		trigTaskAt(_dueTime + _interval, _microsTiming);
 	}
 };
 
 /// <summary>Reccuring task at interval from last execution</summary>
 class RecurrentTaskFromStart : public RecurrentTask
 {
-	RecurrentTaskFromStart(Task& task, time_t interval) :
-		RecurrentTask(task, interval)
+	RecurrentTaskFromStart(Task& task, time_t interval, bool microsTiming = false) :
+		RecurrentTask(task, interval, microsTiming)
 	{}
 
 	void run()
 	{
-		trigTask(_interval);
+		trigTask(_interval, _microsTiming);
 		_task.run();
 	}
 };

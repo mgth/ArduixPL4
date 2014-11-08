@@ -58,8 +58,6 @@ class HA_BH1750 :public Task, public I2C {
 public:
 
 	HA_BH1750(
-		time_t first = TASK_NO_RECURRENCE,
-		time_t interval = TASK_NO_RECURRENCE,
 		int addr = 0x23,
 		byte mode = 1,
 		bool continuous = false,

@@ -125,6 +125,27 @@ void Task::trigTask(time_t delay, bool microsTiming)
 	trigTaskAt(microsTiming?micros():millis() + delay, microsTiming);
 }
 
+Task* Task::trigReccurent(time_t delay, time_t interval, bool microsTiming)
+{
+	Task* t = new RecurrentTask(*this, interval, microsTiming);
+	t->trigTask(delay, microsTiming);
+	return t;
+}
+
+Task* Task::trigReccurentFixed(time_t delay, time_t interval, bool microsTiming)
+{
+	Task* t = new RecurrentTask(*this, interval, microsTiming);
+	t->trigTask(delay, microsTiming);
+	return t;
+}
+
+Task* Task::trigReccurentFromStart(time_t delay, time_t interval, bool microsTiming)
+{
+	Task* t = new RecurrentTask(*this, interval, microsTiming);
+	t->trigTask(delay, microsTiming);
+	return t;
+}
+
 // returns scheduled position against t
 long Task::compare(time_t t, bool microsTiming) const
 {

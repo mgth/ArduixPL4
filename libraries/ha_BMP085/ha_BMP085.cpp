@@ -34,7 +34,7 @@ typedef enum
 
 
 #include <util/delay.h>
-HA_BMP085::HA_BMP085(time_t first, time_t interval, BMP085_res_t mode) : _oversampling(mode),Task(first, interval), I2C(BMP085_I2CADDR){}void HA_BMP085::init(){	I2C::init();
+HA_BMP085::HA_BMP085(BMP085_res_t mode) : _oversampling(mode), I2C(BMP085_I2CADDR){}void HA_BMP085::init(){	I2C::init();
 	if (read<byte>(CHIPID) != BMP085_CHIPID) return;
 
 	/* read calibration data */

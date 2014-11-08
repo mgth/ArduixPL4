@@ -25,9 +25,10 @@
 #ifndef I2C_H
 #define I2C_H
 
+#include <ArduHA.h>
 #include <inttypes.h>
 
-
+/// <summary>base class for I2C Devices</summary>
 class I2C
 {
 
@@ -35,13 +36,35 @@ protected:
 	/// i2c device address
 	uint8_t _addr;
 	I2C(uint8_t addr);
-	int8_t request(uint8_t cmd, void* ret, int size) const;
+
+	/// <summary>write 1 byte command and flush response to given buffer</summary>
+	/// <param name="cmd">byte command to be sent</param>
+	/// <param name="buffer">buffer to get response</param>
+	/// <param name="size">buffer size</param>
+	int8_t request(uint8_t cmd, void* buffer, int size) const;
+
+	/// <summary>read from I2C to given buffer</summary>
+	/// <param name="buffer">buffer to get response</param>
+	/// <param name="size">buffer size</param>
 	int8_t request(void* ret, int size) const;
+
+	/// <summary>write 1 byte command and send buffer content</summary>
+	/// <param name="cmd">byte command to be sent</param>
+	/// <param name="buffer">buffer to send</param>
+	/// <param name="size">buffer size</param>
 	int8_t send(uint8_t cmd, const void* ret, int size) const;
+
+	/// <summary>write given buffer to I2C</summary>
+	/// <param name="buffer">buffer to get response</param>
+	/// <param name="size">buffer size</param>
 	int8_t send(const void* ret, int size) const;
 
+	/// <summary>init I2C bus</summary>
+	/// <remarq>must be called before any other command</remarq>
 	void init();
 
+	/// <summary>read wariable from I2C</summary>
+	/// <param name="cmd">byte command to be sent</param>
 	template<typename T>
 	T read(uint8_t cmd) const
 	{
@@ -50,19 +73,25 @@ protected:
 		return ret;
 	}
 
+	/// <summary>write wariable to I2C</summary>
+	/// <param name="cmd">byte command to be sent</param>
+	/// <param name="val">variable value to be send after command</param>
 	template<typename T>
 	uint8_t write(uint8_t cmd,T val) const
 	{
 		return send(cmd, &val, sizeof(T));
 	}
 
+	/// <summary>write wariable to I2C whitout command</summary>
+	/// <param name="val">variable value to be send after command</param>
 	template<typename T>
 	uint8_t write(T val) const
 	{
 		return send(&val, sizeof(T));
 	}
 
-	/// i2c device address
+	/// <summary>read wariable from I2C Big Endian</summary>
+	/// <param name="cmd">byte command to be sent</param>
 	template<typename T>
 	T readBE(uint8_t cmd) const
 	{

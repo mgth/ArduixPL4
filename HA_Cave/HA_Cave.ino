@@ -2,10 +2,12 @@
 #include <Ethernet.h>
 #include "PubSubClient.h"
 
-#include <arduha.h>
+#include <ArduHA.h>
 //#include <wire.h>
 
 #include "ha_DHT.h"
+#include "ha_RF24L01.h"
+#include "mqttsn.h"
 
 byte mac[] = { 0xDE, 0xED, 0xBA, 0xFE, 0xFE, 0xED };
 byte server[] = { 172, 16, 0, 2 };
@@ -15,8 +17,8 @@ byte ip[] = { 172, 16, 0, 100 };
 HA_DHT<DHT11> sensorUp(6);
 HA_DHT<DHT11> sensorDn(7);
 
-RecurrentTask t1(sensorUp, 5000);
-RecurrentTask t2(sensorDn, 5000);
+HA_RF24L01 rf24(7,8);
+
 void callb(char* topic, byte* payload, unsigned int length);
 EthernetClient ethClient;
 PubSubClient client(server, 1883, callb, ethClient);
@@ -27,6 +29,11 @@ void callb(char* topic, byte* payload, unsigned int length) {
 	// Free the memory
 	free(p);
 }
+
+class MQTT_SN : Filter<double>
+{
+
+};
 
 class MQTT : Filter<double>
 {
@@ -44,10 +51,6 @@ public:
 
 void setup()
 {
-
-	t1.trigTask(2000);
-	t2.trigTask(2000);
-
 	client.connect("Cave");
 
 	sensorUp.temperature.link(new MQTT("TempUp"));
@@ -55,6 +58,8 @@ void setup()
 	sensorDn.temperature.link(new MQTT("TempDn"));
 	sensorDn.humidity.link(new MQTT("HumDn"));
 
+	sensorUp.trigReccurent(2000, 5000);
+	sensorDn.trigReccurent(2000, 5000);
 }
 
 void loop()

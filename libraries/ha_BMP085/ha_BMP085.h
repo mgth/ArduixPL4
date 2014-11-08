@@ -24,7 +24,7 @@
 } bmp085_calib_data;typedef enum{	state_init,	state_none,	state_temperature,	state_pressure} state_t;class HA_BMP085:public Task, public I2C {
 uint8_t _oversampling;bmp085_calib_data _calibration;state_t _state = state_init;int32_t _B5;private:
 
-	void init();	void readRawTemperature();	uint32_t readRawPressure();	void process();public:FilterPin<int> temperature;FilterPin<long> pressure;	HA_BMP085(time_t first, time_t interval, BMP085_res_t mode=UltraHigh);	bool queryTemperature();
+	void init();	void readRawTemperature();	uint32_t readRawPressure();	void process();public:FilterPin<int> temperature;FilterPin<long> pressure;	HA_BMP085(BMP085_res_t mode=UltraHigh);	bool queryTemperature();
 	bool queryPressure();
 	void run();};
 #endif
