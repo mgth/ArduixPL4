@@ -46,7 +46,6 @@ void Task::_sleep(uint8_t wdt_period) {
 
 // sleep reducing power consumption
 void Task::sleep(time_t milliseconds) {
-	if (_microsTiming) milliseconds /= 1000;
 	while (milliseconds >= 8000) { _sleep(WDTO_8S); milliseconds -= 8000; }
 	if (milliseconds >= 4000)    { _sleep(WDTO_4S); milliseconds -= 4000; }
 	if (milliseconds >= 2000)    { _sleep(WDTO_2S); milliseconds -= 2000; }
@@ -59,35 +58,13 @@ void Task::sleep(time_t milliseconds) {
 	if (milliseconds >= 16)      { _sleep(WDTO_15MS); milliseconds -= 15; }
 }
 
-bool Task::microsTiming()
-{
-	if (_microsTiming) return true;
-	time_t delais = _dueTime - millis();
-	if (delais > (2 ^ 32 / 1000)) return false;
-	_dueTime *= 1000;
-	_microsTiming = true;
-	return true;
-}
-
 // run task if time to, or sleep if wait==true
 void Task::_run(bool wait)
 {
-	long d;
-	if (!microsTiming())
-	{
-		d = compare(millis(),false);
-		if (wait) while (d > 0)	{
-			sleep(d);
-			d = compare(millis(),false);
-		}
-	}
-	else
-	{
-		d = compare(micros(),true);
-		if (wait) while (d > 0) {
-			if (d>15000) sleep(d/1000);
-			d = compare(micros(),true);
-		}
+	long d = compare(millis());
+	if (wait) while (d > 0)	{
+		sleep(d);
+		d = compare(millis());
 	}
 
 	if (d <= 0)
@@ -113,61 +90,49 @@ void Task::loop(bool sleep)
 	}
 }
 
-void Task::trigTaskAt(time_t dueTime, bool microsTiming)
+void Task::trigTaskAt(time_t dueTime)
 {
-	_microsTiming = microsTiming;
 	_dueTime = dueTime;
 	relocate();
 }
 
-void Task::trigTask(time_t delay, bool microsTiming)
+void Task::trigTask(time_t delay)
 {
-	trigTaskAt(microsTiming?micros():millis() + delay, microsTiming);
+	trigTaskAt(millis() + delay);
 }
 
-Task* Task::trigReccurent(time_t delay, time_t interval, bool microsTiming)
+Task* Task::trigReccurent(time_t delay, time_t interval)
 {
-	Task* t = new RecurrentTask(*this, interval, microsTiming);
-	t->trigTask(delay, microsTiming);
+	Task* t = new RecurrentTask(*this, interval);
+	t->trigTask(delay);
 	return t;
 }
 
-Task* Task::trigReccurentFixed(time_t delay, time_t interval, bool microsTiming)
+Task* Task::trigReccurentFixed(time_t delay, time_t interval)
 {
-	Task* t = new RecurrentTask(*this, interval, microsTiming);
-	t->trigTask(delay, microsTiming);
+	Task* t = new RecurrentTask(*this, interval);
+	t->trigTask(delay);
 	return t;
 }
 
-Task* Task::trigReccurentFromStart(time_t delay, time_t interval, bool microsTiming)
+Task* Task::trigReccurentFromStart(time_t delay, time_t interval)
 {
-	Task* t = new RecurrentTask(*this, interval, microsTiming);
-	t->trigTask(delay, microsTiming);
+	Task* t = new RecurrentTask(*this, interval);
+	t->trigTask(delay);
 	return t;
 }
 
 // returns scheduled position against t
-long Task::compare(time_t t, bool microsTiming) const
+long Task::compare(time_t t) const
 {
-	if (microsTiming)
-	{
-		if (_microsTiming)
-			return _dueTime - t;
-		else
-			return _dueTime - (millis()+(t-micros())/1000);
-	}
-	else
-	{
-		if (_microsTiming)
-			return millis()+(_dueTime-micros())/1000 - t;
-		else
-			return _dueTime - t;
-	}
+	return _dueTime - t;
+	
 }
 
 //for Task to be sortable
 int Task::compare(const Task& task) const
 {
-	long diff = compare(task.dueTime(), task._microsTiming);
+	long diff = compare(task.dueTime());
+	return sgn(diff);
 }
 
