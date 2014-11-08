@@ -39,10 +39,12 @@ https://code.google.com/p/narcoleptic/
 class Task
 	:public LinkedList<Task>
 {
+	static Task* _millisTasks;
 	/// <summary>sleep using power reduction</summary>
 	static void _sleep(uint8_t wdt_period);
 	/// <summary>internal task execution engine</summary>
 	void _run(bool sleep=false);
+	bool _runMillis();
 
 protected:
 	/// <summary>scheduled execution time</summary>
@@ -74,6 +76,14 @@ public:
 	/// <summary>schedule next execution at determined delay from now</summary>
 	/// <param name="delay">delay in ms ou &micro;s</param>
 	void trigTask(time_t delay = 0);
+
+	/// <summary>schedule next execution at determined due time</summary>
+	/// <param name="duetime">time in ms</param>
+	void trigTaskAtMillis(time_t duetime, Task* task=NULL);
+
+	/// <summary>schedule next execution at determined delay from now</summary>
+	/// <param name="delay">delay in ms</param>
+	void trigTaskMillis(time_t delay = 0, Task* task = NULL);
 
 	/// <summary>schedule reccurent execution at determined delay from now</summary>
 	/// <param name="delay">delay in ms or &micro;s</param>
@@ -163,5 +173,18 @@ class RecurrentTaskFromStart : public RecurrentTask
 	}
 };
 
+/// <summary>class to embed millis tasks in micros loop</summary>
+class TaskMillis : public Task
+{
+	Task& _task;
+
+public:
+	TaskMillis(Task& task) :_task(task) {};
+
+	void run()
+	{
+		_task.trigTaskMillis(_task.dueTime(),this);
+	}
+};
 
 #endif

@@ -85,9 +85,6 @@ dhtStatus_t HA_DHTxx::read(double& temp, double& hum)
 	return DHT_OK;
 }
 
-
-
-
 int HA_DHTxx::readWhile(bool state)
 {
 	int duration;
@@ -97,8 +94,6 @@ int HA_DHTxx::readWhile(bool state)
 
 	return -1;
 }
-
-
 
 dhtStatus_t HA_DHTxx::read(uint8_t* bits, bool dht11)
 {

@@ -27,6 +27,10 @@
 #include <avr/sleep.h>
 #include "debug.h"
 
+#define MAX_MICROS ((2^31)/1000)
+
+Task* Task::_millisTasks = NULL;
+
 SIGNAL(WDT_vect) {
 	wdt_disable();
 	wdt_reset();
@@ -45,26 +49,26 @@ void Task::_sleep(uint8_t wdt_period) {
 }
 
 // sleep reducing power consumption
-void Task::sleep(time_t milliseconds) {
-	while (milliseconds >= 8000) { _sleep(WDTO_8S); milliseconds -= 8000; }
-	if (milliseconds >= 4000)    { _sleep(WDTO_4S); milliseconds -= 4000; }
-	if (milliseconds >= 2000)    { _sleep(WDTO_2S); milliseconds -= 2000; }
-	if (milliseconds >= 1000)    { _sleep(WDTO_1S); milliseconds -= 1000; }
-	if (milliseconds >= 500)     { _sleep(WDTO_500MS); milliseconds -= 500; }
-	if (milliseconds >= 250)     { _sleep(WDTO_250MS); milliseconds -= 250; }
-	if (milliseconds >= 125)     { _sleep(WDTO_120MS); milliseconds -= 120; }
-	if (milliseconds >= 64)      { _sleep(WDTO_60MS); milliseconds -= 60; }
-	if (milliseconds >= 32)      { _sleep(WDTO_30MS); milliseconds -= 30; }
-	if (milliseconds >= 16)      { _sleep(WDTO_15MS); milliseconds -= 15; }
+void Task::sleep(time_t us) {
+	while (us >= 8000000) { _sleep(WDTO_8S); us -= 8000000; }
+	if (us >= 4000000)    { _sleep(WDTO_4S); us -= 4000000; }
+	if (us >= 2000000)    { _sleep(WDTO_2S); us -= 2000000; }
+	if (us >= 1000000)    { _sleep(WDTO_1S); us -= 1000000; }
+	if (us >= 500000)     { _sleep(WDTO_500MS); us -= 500000; }
+	if (us >= 250000)     { _sleep(WDTO_250MS); us -= 250000; }
+	if (us >= 125000)     { _sleep(WDTO_120MS); us -= 120000; }
+	if (us >= 64000)      { _sleep(WDTO_60MS); us -= 60000; }
+	if (us >= 32000)      { _sleep(WDTO_30MS); us -= 30000; }
+	if (us >= 16000)      { _sleep(WDTO_15MS); us -= 15000; }
 }
 
 // run task if time to, or sleep if wait==true
 void Task::_run(bool wait)
 {
-	long d = compare(millis());
+	long d = compare(micros());
 	if (wait) while (d > 0)	{
 		sleep(d);
-		d = compare(millis());
+		d = compare(micros());
 	}
 
 	if (d <= 0)
@@ -76,6 +80,24 @@ void Task::_run(bool wait)
 	}
 }
 
+// task in millis queue
+bool Task::_runMillis()
+{
+	long d = compare(millis());
+
+	if (d <= (2^31)/1000 )
+	{
+		//detach task before execution
+		unlink(_millisTasks);
+		//convert dueTime to micros
+		_dueTime *= 1000;
+		//requeue in micros
+		relocate();
+		return true;
+	}
+	return false;
+}
+
 // run next task in the queue
 void Task::loop(bool sleep)
 {
@@ -83,11 +105,10 @@ void Task::loop(bool sleep)
 	{
 		first()->_run(sleep);
 	}
-	else
-	{
-		//TODO: what should we do if no more tasks in queue ?
-		// that should never happen, maybe we should reboot ?
-	}
+
+	// deal with millis queue 
+	// TODO : check is done each loop
+	while (_millisTasks && _millisTasks->_runMillis());
 }
 
 void Task::trigTaskAt(time_t dueTime)
@@ -98,7 +119,40 @@ void Task::trigTaskAt(time_t dueTime)
 
 void Task::trigTask(time_t delay)
 {
-	trigTaskAt(millis() + delay);
+	trigTaskAt(micros() + delay);
+}
+
+void Task::trigTaskAtMillis(time_t dueTime, Task* task)
+{
+	long delay = dueTime - millis();
+	if (delay <= MAX_MICROS)
+	{
+		if (task) delete(task);
+		trigTaskAt(dueTime * 1000);
+	}
+	else
+	{
+		_dueTime = dueTime;
+		if(!task) task = new TaskMillis(*this);
+		task->trigTask(MAX_MICROS);
+	}
+}
+
+
+void Task::trigTaskMillis(time_t delay, Task* task)
+{
+	if (delay <= MAX_MICROS)
+	{
+		if (task) delete(task);
+		trigTask(delay * 1000);
+	}
+	else
+		//trigTaskAtMillis(millis() + delay);
+	{
+		_dueTime = millis() + delay;
+		if (!task) task = new TaskMillis(*this);
+		task->trigTask(MAX_MICROS);
+	}
 }
 
 Task* Task::trigReccurent(time_t delay, time_t interval)
