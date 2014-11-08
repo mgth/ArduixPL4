@@ -39,20 +39,20 @@ https://code.google.com/p/narcoleptic/
 class Task
 	:public LinkedList<Task>
 {
-	static Task* _millisTasks;
 	/// <summary>sleep using power reduction</summary>
 	static void _sleep(uint8_t wdt_period);
+	/// <summary>do nothing for some time, potencialy use power save</summary>
+	/// <param name="delay">delay in &micro;s</param>
+	static void sleep(time_t delay);
 	/// <summary>internal task execution engine</summary>
-	void _run(bool sleep=false);
-	bool _runMillis();
+	bool _run(bool sleep=false);
 
 protected:
 	/// <summary>scheduled execution time</summary>
 	time_t _dueTime;
 
 	/// <returns>scheduled position against t (<0 if before, >0 if after)</returns>
-	/// <param name="t">time in ms or &micro;s</param>
-	/// <param name="microsTiming">if true delay is &micro;s</param>
+	/// <param name="t">time in &micro;s</param>
 	long compare(time_t t) const;
 
 
@@ -60,43 +60,45 @@ public:
 
 	/// <summary>run next task in queue if it's time to</summary>
 	/// <param name="sleep">if true reduce power consuption until next task</param>
-	static void loop(bool sleep=false);
+	/// <returns>-1 : no more task in queue<br>0 : nothing done this time<br>1 : task executed</returns>
+	static int loop(bool sleep = false);
 
-	/// <summary>do nothing for some time, potencialy use power save</summary>
-	/// <param name="delay">delay in ms</param>
-	void sleep(time_t delay);
 
 	/// <summary>to be overriden for task execution</summary>
 	virtual void run() = 0;
 
 	/// <summary>schedule next execution at determined due time</summary>
-	/// <param name="duetime">time in ms or &micro;s</param>
-	void trigTaskAt(time_t duetime);
+	/// <param name="duetime">time in &micro;s</param>
+	void trigTaskAtMicros(time_t duetime);
 
 	/// <summary>schedule next execution at determined delay from now</summary>
-	/// <param name="delay">delay in ms ou &micro;s</param>
-	void trigTask(time_t delay = 0);
+	/// <param name="delay">delay in &micro;s</param>
+	void trigTaskMicros(time_t delay = 0);
 
 	/// <summary>schedule next execution at determined due time</summary>
 	/// <param name="duetime">time in ms</param>
-	void trigTaskAtMillis(time_t duetime, Task* task=NULL);
+	void trigTaskAt(time_t duetime);
+
+	/// <summary>schedule next execution at determined due time</summary>
+	/// <param name="duetime">time in ms</param>
+	void trigTaskAtMillis(time_t duetime);
 
 	/// <summary>schedule next execution at determined delay from now</summary>
 	/// <param name="delay">delay in ms</param>
-	void trigTaskMillis(time_t delay = 0, Task* task = NULL);
+	void trigTask(time_t delay = 0);
 
 	/// <summary>schedule reccurent execution at determined delay from now</summary>
-	/// <param name="delay">delay in ms or &micro;s</param>
+	/// <param name="delay">delay in &micro;s</param>
 	/// <param name="interval">interval in ms or &micro;s</param>
 	Task* trigReccurent(time_t delay, time_t interval);
 
 	/// <summary>schedule reccurent execution at determined delay from now</summary>
-	/// <param name="delay">delay in ms or &micro;s</param>
-	/// <param name="interval">interval in ms or &micro;s</param>
+	/// <param name="delay">delay in &micro;s</param>
+	/// <param name="interval">interval in &micro;s</param>
 	Task* trigReccurentFixed(time_t delay, time_t interval);
 
 	/// <summary>schedule reccurent execution  from last execution at determined delay from now</summary>
-	/// <param name="delay">delay in ms or &micro;s</param>
+	/// <param name="delay">delay in &micro;s</param>
 	/// <param name="interval">interval in ms or &micro;s</param>
 	Task* trigReccurentFromStart(time_t delay, time_t interval);
 
@@ -176,15 +178,11 @@ class RecurrentTaskFromStart : public RecurrentTask
 /// <summary>class to embed millis tasks in micros loop</summary>
 class TaskMillis : public Task
 {
-	Task& _task;
+	Task* _task;
+	void run();
 
 public:
-	TaskMillis(Task& task) :_task(task) {};
-
-	void run()
-	{
-		_task.trigTaskMillis(_task.dueTime(),this);
-	}
+	TaskMillis(Task* task) :_task(task) {};
 };
 
 #endif

@@ -45,12 +45,12 @@ protected:
 	time_t _lastSampling;
 
 	public:
-	FilterPin<double> temperature;
-	FilterPin<double> humidity;
+	FilterPin<float> temperature;
+	FilterPin<float> humidity;
 
 	dhtStatus_t read(uint8_t* bits, bool dht11);
-	dhtStatus_t read(double& t, double& h);
-	dhtStatus_t read11(double& t, double& h);
+	dhtStatus_t read(float& t, float& h);
+	dhtStatus_t read11(float& t, float& h);
 	int readWhile(bool state);
 
 
@@ -75,15 +75,16 @@ protected:
 
 	void run()
 	{
+		// if sampling duration still running, wait for ending
 		long delay = samplingDuration();
 		if (delay > 0)
 		{
-			trigTask(delay);
+			trigTaskMicros(delay);
 			return;
 		}
 
-		double t;
-		double h;
+		float t;
+		float h;
 
 		dhtStatus_t status;
 		if (model>=DHT21)

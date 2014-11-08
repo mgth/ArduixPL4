@@ -27,9 +27,8 @@
 #include <avr/sleep.h>
 #include "debug.h"
 
-#define MAX_MICROS ((2^31)/1000)
-
-Task* Task::_millisTasks = NULL;
+#define MAX_MILLIS (2^31)
+#define MAX_MICROS (MAX_MILLIS/1000)
 
 SIGNAL(WDT_vect) {
 	wdt_disable();
@@ -63,7 +62,7 @@ void Task::sleep(time_t us) {
 }
 
 // run task if time to, or sleep if wait==true
-void Task::_run(bool wait)
+bool Task::_run(bool wait)
 {
 	long d = compare(micros());
 	if (wait) while (d > 0)	{
@@ -77,82 +76,58 @@ void Task::_run(bool wait)
 		unlink();
 		//actual task execution
 		run();
-	}
-}
-
-// task in millis queue
-bool Task::_runMillis()
-{
-	long d = compare(millis());
-
-	if (d <= (2^31)/1000 )
-	{
-		//detach task before execution
-		unlink(_millisTasks);
-		//convert dueTime to micros
-		_dueTime *= 1000;
-		//requeue in micros
-		relocate();
 		return true;
 	}
 	return false;
 }
 
+
 // run next task in the queue
-void Task::loop(bool sleep)
+int Task::loop(bool sleep)
 {
 	if (first())
 	{
-		first()->_run(sleep);
+		if (first()->_run(sleep))
+			return 1;
+		return 0;
 	}
-
-	// deal with millis queue 
-	// TODO : check is done each loop
-	while (_millisTasks && _millisTasks->_runMillis());
+	return -1;
 }
 
-void Task::trigTaskAt(time_t dueTime)
+void Task::trigTaskAtMicros(time_t dueTime)
 {
 	_dueTime = dueTime;
 	relocate();
 }
 
-void Task::trigTask(time_t delay)
+void Task::trigTaskMicros(time_t delay)
 {
 	trigTaskAt(micros() + delay);
 }
 
-void Task::trigTaskAtMillis(time_t dueTime, Task* task)
+void Task::trigTaskAtMillis(time_t dueTime)
+{
+		_dueTime = dueTime;
+		Task* t = new TaskMillis(this);
+		if (t) t->trigTaskMicros(MAX_MICROS * 1000);
+}
+
+void Task::trigTaskAt(time_t dueTime)
 {
 	long delay = dueTime - millis();
 	if (delay <= MAX_MICROS)
-	{
-		if (task) delete(task);
-		trigTaskAt(dueTime * 1000);
-	}
+		trigTaskAtMicros(dueTime * 1000);
 	else
-	{
-		_dueTime = dueTime;
-		if(!task) task = new TaskMillis(*this);
-		task->trigTask(MAX_MICROS);
-	}
+		trigTaskAtMillis(dueTime);
 }
 
 
-void Task::trigTaskMillis(time_t delay, Task* task)
+void Task::trigTask(time_t delay)
 {
 	if (delay <= MAX_MICROS)
-	{
-		if (task) delete(task);
-		trigTask(delay * 1000);
-	}
+		trigTaskMicros(delay * 1000);
 	else
-		//trigTaskAtMillis(millis() + delay);
-	{
-		_dueTime = millis() + delay;
-		if (!task) task = new TaskMillis(*this);
-		task->trigTask(MAX_MICROS);
-	}
+		trigTaskAtMillis(millis() + delay);
 }
 
 Task* Task::trigReccurent(time_t delay, time_t interval)
@@ -180,7 +155,6 @@ Task* Task::trigReccurentFromStart(time_t delay, time_t interval)
 long Task::compare(time_t t) const
 {
 	return _dueTime - t;
-	
 }
 
 //for Task to be sortable
@@ -190,3 +164,17 @@ int Task::compare(const Task& task) const
 	return sgn(diff);
 }
 
+void TaskMillis::run()
+{
+	long delay = _task->dueTime() - millis();
+	if (delay <= MAX_MICROS)
+	{
+		delete(this);
+		_task->trigTaskAt(_task->dueTime() * 1000);
+	}
+	else
+	{
+		trigTask(MAX_MICROS);
+		return;
+	}
+}

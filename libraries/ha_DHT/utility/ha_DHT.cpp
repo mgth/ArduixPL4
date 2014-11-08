@@ -51,7 +51,7 @@ double dewPoint(double celsius, double humidity)
 }
 
 
-dhtStatus_t HA_DHTxx::read11(double& temp, double& hum)
+dhtStatus_t HA_DHTxx::read11(float& temp, float& hum)
 {
 	byte bits[4];
 
@@ -68,7 +68,7 @@ dhtStatus_t HA_DHTxx::read11(double& temp, double& hum)
 
 
 
-dhtStatus_t HA_DHTxx::read(double& temp, double& hum)
+dhtStatus_t HA_DHTxx::read(float& temp, float& hum)
 {
 	byte bits[4];
 
@@ -77,8 +77,8 @@ dhtStatus_t HA_DHTxx::read(double& temp, double& hum)
 	if (rv != DHT_OK) return rv;
 
 	// CONVERT AND STORE
-	hum = (long)word(bits[0], bits[1]) / 10;
-	temp = (long)word(bits[2] & 0x7F, bits[3]) / 10;
+	hum = (float)word(bits[0], bits[1]) / 10;
+	temp = (float)word(bits[2] & 0x7F, bits[3]) / 10;
 
 	if (bits[2] & 0x80) temp = -temp;
 
