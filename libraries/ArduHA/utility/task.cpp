@@ -169,12 +169,9 @@ void TaskMillis::run()
 	long delay = _task->dueTime() - millis();
 	if (delay <= MAX_MICROS)
 	{
+		_task->trigTaskAtMicros(_task->dueTime() * 1000);
 		delete(this);
-		_task->trigTaskAt(_task->dueTime() * 1000);
 	}
 	else
-	{
 		trigTask(MAX_MICROS);
-		return;
-	}
 }
