@@ -31,7 +31,7 @@
 
 HA_DHTxx::HA_DHTxx( uint8_t pin) : _pin(pin)
 {
-	_lastSampling = millis();
+	_lastSampling = micros();
 }
 
 // dewPoint function NOAA
@@ -137,7 +137,7 @@ dhtStatus_t HA_DHTxx::read(uint8_t* bits, bool dht11)
 
 	if (sum != value) return DHT_BADCHECKSUM;
 
-	_lastSampling = millis();
+	_lastSampling = micros();
 
 	return DHT_OK;
 }

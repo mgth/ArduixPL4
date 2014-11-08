@@ -71,7 +71,7 @@ public:
 
 protected:
 
-	long samplingDuration() { return ((model >= DHT21) ? 2000 : 1000) - (millis() - _lastSampling); }
+	long samplingDuration() { return ((model >= DHT21) ? 2000000 : 1000000) - (micros() - _lastSampling); }
 
 	void run()
 	{
